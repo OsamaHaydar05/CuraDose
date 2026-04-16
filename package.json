@@ -1,0 +1,23 @@
+{
+  "name": "curadose",
+  "version": "1.0.0",
+  "description": "CuraDose is a smart IoT-based medicine box designed to help patients take the right medication at the right time.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OsamaHaydar05/CuraDose.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/OsamaHaydar05/CuraDose/issues"
+  },
+  "homepage": "https://github.com/OsamaHaydar05/CuraDose#readme",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
