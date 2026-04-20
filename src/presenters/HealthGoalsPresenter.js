@@ -4,11 +4,12 @@ function sleep(ms) {
   });
 }
 
-export async function inviteCaregiver(email) {
+export async function saveHealthGoals(rating, goals, confidence) {
   await sleep(400);
 
   return {
-    invited: Boolean(email),
-    email,
+    rating,
+    goals,
+    confidence,
   };
 }
