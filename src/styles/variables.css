@@ -26,3 +26,12 @@
 
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
+
+[data-theme="dark"] {
+  --color-bg: #07192b;
+  --color-white: #0f2941;
+  --color-border: #1e3a52;
+  --color-text-dark: #e8edf2;
+  --color-text-muted: #8fa3b4;
+  --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.35);
+}

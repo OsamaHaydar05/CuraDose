@@ -29,3 +29,33 @@ img {
   display: block;
   max-width: 100%;
 }
+
+.dashboard-placeholder {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-6);
+  text-align: center;
+  background: var(--color-bg);
+}
+
+.dashboard-placeholder__inner {
+  max-width: 28rem;
+}
+
+.dashboard-placeholder__title {
+  margin: 0 0 var(--space-2);
+  color: var(--color-navy);
+  font-size: 1.75rem;
+  font-weight: 800;
+}
+
+[data-theme="dark"] .dashboard-placeholder__title {
+  color: var(--color-text-dark);
+}
+
+.dashboard-placeholder__subtitle {
+  margin: 0;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}

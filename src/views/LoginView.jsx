@@ -1,18 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { loginUser, registerUser } from "../presenters/LoginPresenter";
 import "../styles/LoginView.css";
-
-const featureItems = [
-  { icon: "⏰", label: "Timely Reminders" },
-  { icon: "🔒", label: "Smart & Secure" },
-  { icon: "🤝", label: "Caregiver Support" },
-];
 
 const initialLoginState = { email: "", password: "" };
 const initialRegisterState = { name: "", email: "", password: "", role: "patient" };
 
-export default function LoginView() {
+export default function LoginView({ theme = "system", setTheme }) {
   const navigate = useNavigate();
   const location = useLocation();
   const getScreenFromPath = (pathname) => {
@@ -86,57 +80,164 @@ export default function LoginView() {
 
   if (screen === "landing") {
     return (
-      <main className="login-page">
-        <section className="login-shell">
-          <header className="brand-row">
-            <div className="brand-pill-icon" aria-hidden>
-              💊
+      <main className="login-page lp-landing">
+        <div className="lp-shell">
+          <header className="lp-navbar">
+            <div className="lp-navbar-brand">
+              <div className="brand-pill-icon lp-brand-icon" aria-hidden>
+                💊
+              </div>
+              <div className="lp-brand-text-block">
+                <p className="brand-name lp-brand-title">CuraDose</p>
+                <p className="lp-brand-tagline">Smart Medication, Better Health</p>
+              </div>
             </div>
-            <p className="brand-name">CuraDose</p>
+            <nav className="lp-nav-links" aria-label="Primary">
+              <a className="lp-nav-link" href="#features">
+                Features
+              </a>
+              <Link className="lp-nav-link" to="/dashboard">
+                Dashboard
+              </Link>
+              <a className="lp-nav-link" href="#how-it-works">
+                How it works
+              </a>
+              <a className="lp-nav-link" href="#caregiver">
+                Caregiver
+              </a>
+            </nav>
+            <div className="lp-navbar-actions">
+              <button
+                className="btn-outline lp-btn-nav lp-btn-nav-outline"
+                type="button"
+                onClick={() => navigate("/login")}
+              >
+                Log In
+              </button>
+              <button
+                className="btn-primary lp-btn-nav"
+                type="button"
+                onClick={() => navigate("/create-account")}
+              >
+                Create Account
+              </button>
+            </div>
           </header>
 
-          <div className="hero-content">
-            <h1 className="hero-heading">
-              <span>Smart Medication.</span>
-              <span className="hero-heading-accent">Better Health.</span>
-            </h1>
-            <p className="hero-subtitle">
-              Stay on track with real-time medication support from your smart IoT medicine box.
-            </p>
-          </div>
-
-          <section className="device-card" aria-label="Smart medicine box preview">
-            <img
-              src="https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=900&q=80"
-              alt="Smart medicine organizer on a clean desk"
-            />
-          </section>
-
-          <section className="feature-list" aria-label="CuraDose features">
-            {featureItems.map((feature) => (
-              <article className="feature-card" key={feature.label}>
-                <span className="feature-icon" aria-hidden>
-                  {feature.icon}
-                </span>
-                <span className="feature-label">{feature.label}</span>
-              </article>
+          <div
+            className="lp-theme-toggle"
+            role="group"
+            aria-label="Color theme"
+          >
+            {["light", "dark", "system"].map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                className={`lp-theme-option ${theme === mode ? "lp-theme-option--active" : ""}`}
+                onClick={() => setTheme?.(mode)}
+              >
+                {mode === "light" ? "Light" : mode === "dark" ? "Dark" : "System"}
+              </button>
             ))}
+          </div>
+
+          <section className="lp-hero" aria-label="Introduction">
+            <div className="lp-hero-copy">
+              <div className="lp-badge">
+                <span className="lp-badge-dot" aria-hidden />
+                <span>Built for better medication adherence</span>
+              </div>
+              <h1 className="lp-hero-heading">
+                <span className="lp-hero-line lp-hero-line--navy">Smart Medication.</span>
+                <span className="lp-hero-line lp-hero-line--accent">Better Health.</span>
+              </h1>
+              <p className="lp-hero-subtitle" id="how-it-works">
+                CuraDose helps users manage their medication routine with reminders, progress
+                tracking, refill visibility, and optional caregiver support.
+              </p>
+              <div className="lp-cta-row">
+                <button
+                  className="btn-primary lp-cta-primary"
+                  type="button"
+                  onClick={() => navigate("/create-account")}
+                >
+                  Get Started
+                </button>
+                <button className="btn-outline lp-cta-secondary" type="button">
+                  Watch Demo
+                </button>
+              </div>
+              <div className="lp-stat-row" id="features">
+                <article className="lp-stat-card">
+                  <p className="lp-stat-value">87%</p>
+                  <p className="lp-stat-label">Adherence Rate</p>
+                </article>
+                <article className="lp-stat-card">
+                  <p className="lp-stat-value">1.2K</p>
+                  <p className="lp-stat-label">Reminders Sent</p>
+                </article>
+                <article className="lp-stat-card">
+                  <p className="lp-stat-value">320+</p>
+                  <p className="lp-stat-label">Active Caregivers</p>
+                </article>
+              </div>
+            </div>
+
+            <div className="lp-hero-preview" id="caregiver">
+              <div className="lp-preview-card">
+                <div className="lp-preview-header">
+                  <div>
+                    <p className="lp-preview-greeting">Good morning, Emma 👋</p>
+                    <p className="lp-preview-sub">Stay on track. You&apos;ve got this!</p>
+                  </div>
+                  <div className="lp-preview-streak" aria-hidden>
+                    <span className="lp-preview-streak-icon">🔥</span>
+                    <span className="lp-preview-streak-text">12 days</span>
+                  </div>
+                </div>
+                <div className="lp-preview-dose">
+                  <p className="lp-preview-dose-label">
+                    <span className="lp-preview-dose-clock" aria-hidden>
+                      🕐
+                    </span>{" "}
+                    NEXT DOSE
+                  </p>
+                  <p className="lp-preview-dose-name">Atorvastatin</p>
+                  <p className="lp-preview-dose-meta">20 mg · 1 tablet</p>
+                  <p className="lp-preview-dose-time">Today, 10:00 AM</p>
+                  <button className="lp-preview-dose-btn" type="button">
+                    Take Dose
+                  </button>
+                </div>
+                <div className="lp-preview-tiles">
+                  <div className="lp-preview-tile">
+                    <span className="lp-preview-tile-icon" aria-hidden>
+                      💊
+                    </span>
+                    <p className="lp-preview-tile-title">Today&apos;s Medications</p>
+                    <p className="lp-preview-tile-stat">2 / 3 Completed</p>
+                  </div>
+                  <div className="lp-preview-tile">
+                    <span className="lp-preview-tile-icon" aria-hidden>
+                      📦
+                    </span>
+                    <p className="lp-preview-tile-title">Remaining Pills</p>
+                    <p className="lp-preview-tile-stat">14 · Refill in 6 days</p>
+                  </div>
+                  <div className="lp-preview-tile">
+                    <span className="lp-preview-tile-icon" aria-hidden>
+                      🤝
+                    </span>
+                    <p className="lp-preview-tile-title">Caregiver Status</p>
+                    <p className="lp-preview-tile-stat">Connected</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </section>
 
-          <div className="cta-group">
-            <button className="btn-primary" type="button" onClick={() => navigate("/login")}>
-              Log In
-            </button>
-            <button
-              className="btn-outline"
-              type="button"
-              onClick={() => navigate("/create-account")}
-            >
-              Create Account
-            </button>
-            <p className="terms-copy">By continuing, you agree to CuraDose Terms of Service.</p>
-          </div>
-        </section>
+          <p className="lp-terms">By continuing, you agree to CuraDose Terms of Service.</p>
+        </div>
       </main>
     );
   }
@@ -168,8 +269,8 @@ export default function LoginView() {
                 <text x="80" y="19" textAnchor="middle" fontSize="10" fill="#1f2937">
                   Welcome!
                 </text>
-                <rect x="72" y="22" width="16" height="9" rx="4.5" fill="#2a7a5c" />
-                <circle cx="80" cy="26.5" r="2.7" fill="#d1fae5" />
+                <rect x="72" y="22" width="16" height="9" rx="4.5" fill="#1a5f8a" />
+                <circle cx="80" cy="26.5" r="2.7" fill="#e3eef8" />
                 <rect x="17" y="42" width="126" height="62" rx="10" fill="#ffffff" stroke="#d1d5db" />
                 <rect x="26" y="52" width="35" height="39" rx="6" fill="#f3f4f6" />
                 <rect x="63" y="52" width="35" height="39" rx="6" fill="#f3f4f6" />

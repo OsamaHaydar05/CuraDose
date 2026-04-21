@@ -113,13 +113,13 @@ export default function CaregiverView() {
             <svg viewBox="0 0 180 120">
               <rect x="0" y="0" width="180" height="120" rx="12" fill="#dceee6" />
               <circle cx="58" cy="40" r="16" fill="#f5c9a7" />
-              <path d="M38 48c7 14 28 14 35 0l-2 31H40z" fill="#3f6d5b" />
+              <path d="M38 48c7 14 28 14 35 0l-2 31H40z" fill="#1a4b6e" />
               <path d="M42 34c4-9 19-12 27-4 1 2 2 5 2 8-8-4-19-6-29-4z" fill="#5d3a2f" />
               <circle cx="111" cy="44" r="15" fill="#f5d9bf" />
               <path d="M95 51c6 13 24 13 31 0l-2 28H97z" fill="#9ea6af" />
               <path d="M99 36c4-7 17-9 24-2 2 2 3 4 3 8-8-4-17-5-27-4z" fill="#c8ccd2" />
-              <path d="M49 72c16 20 47 20 63 0l11 34H39z" fill="#2f7d61" opacity="0.78" />
-              <path d="M139 20a10 10 0 0110 10c0 8-10 12-10 12s-10-4-10-12a10 10 0 0110-10z" fill="#2a7a5c" />
+              <path d="M49 72c16 20 47 20 63 0l11 34H39z" fill="#1a5f8a" opacity="0.78" />
+              <path d="M139 20a10 10 0 0110 10c0 8-10 12-10 12s-10-4-10-12a10 10 0 0110-10z" fill="#1a5f8a" />
             </svg>
           </div>
         </section>
