@@ -294,7 +294,7 @@
 }
 
 .reg-hero-title-accent {
-  color: #2a7a5c;
+  color: #1a5f8a;
 }
 
 .reg-hero-subtitle {
@@ -361,13 +361,13 @@
 }
 
 .reg-step--active .reg-step-circle {
-  background: #2a7a5c;
-  border-color: #2a7a5c;
+  background: #1a5f8a;
+  border-color: #1a5f8a;
   color: #fff;
 }
 
 .reg-step--active .reg-step-label {
-  color: #2a7a5c;
+  color: #1a5f8a;
   font-weight: 600;
 }
 
@@ -402,8 +402,8 @@
 }
 
 .reg-card--green {
-  background: #e8f5ef;
-  border-color: #d5ebe1;
+  background: #e3eef8;
+  border-color: #cde5f5;
 }
 
 .reg-card--blue {
@@ -422,7 +422,7 @@
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: #e8f5ef;
+  background: #e3eef8;
   display: grid;
   place-items: center;
   font-size: 14px;
@@ -477,8 +477,8 @@
 }
 
 .reg-input:focus {
-  outline: 2px solid rgba(42, 122, 92, 0.2);
-  border-color: #2a7a5c;
+  outline: 2px solid rgba(26, 95, 138, 0.2);
+  border-color: #1a5f8a;
 }
 
 .reg-input--password {
@@ -522,13 +522,13 @@
 
 .reg-goal-ring-bg {
   fill: none;
-  stroke: #cde6dc;
+  stroke: #c4dcef;
   stroke-width: 12;
 }
 
 .reg-goal-ring-progress {
   fill: none;
-  stroke: #2a7a5c;
+  stroke: #1a5f8a;
   stroke-width: 12;
   stroke-linecap: round;
   stroke-dasharray: 220.7 283;
@@ -584,8 +584,8 @@
 }
 
 .reg-goal-btn--active {
-  background: #2a7a5c;
-  border-color: #2a7a5c;
+  background: #1a5f8a;
+  border-color: #1a5f8a;
   color: #fff;
 }
 
@@ -604,7 +604,7 @@
 }
 
 .reg-dyk-copy strong {
-  color: #2a7a5c;
+  color: #1a5f8a;
 }
 
 .reg-dyk-chart {
@@ -629,24 +629,24 @@
 
 .reg-dyk-line {
   fill: none;
-  stroke: #2a7a5c;
+  stroke: #1a5f8a;
   stroke-width: 3;
   stroke-linecap: round;
 }
 
 .reg-dyk-point {
-  fill: #7bb39e;
+  fill: #6e9fcc;
 }
 
 .reg-dyk-point--last {
-  fill: #2a7a5c;
+  fill: #1a5f8a;
 }
 
 .reg-dyk-badge {
   position: absolute;
   top: 0;
   right: 0;
-  background: #2a7a5c;
+  background: #1a5f8a;
   color: #fff;
   font-weight: 700;
   font-size: 0.86rem;
@@ -674,7 +674,7 @@
 .reg-login-link {
   border: none;
   background: transparent;
-  color: #2a7a5c;
+  color: #1a5f8a;
   font-weight: 700;
   cursor: pointer;
 }

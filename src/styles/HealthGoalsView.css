@@ -56,7 +56,7 @@
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: #e9f5ef;
+  background: #e3eef8;
   display: grid;
   place-items: center;
   color: var(--color-green);
@@ -160,7 +160,7 @@
 .hg-goal-tile--active {
   border-color: var(--color-green);
   box-shadow: inset 0 0 0 1px var(--color-green);
-  background: #f5fbf8;
+  background: #edf4fb;
 }
 
 .hg-goal-check {
@@ -309,7 +309,7 @@
 }
 
 .hg-chart-area {
-  fill: rgba(42, 122, 92, 0.18);
+  fill: rgba(26, 95, 138, 0.18);
 }
 
 .hg-chart-line {
@@ -320,7 +320,7 @@
 }
 
 .hg-chart-dot {
-  fill: #86baa5;
+  fill: #7aaabf;
 }
 
 .hg-chart-dot--peak {

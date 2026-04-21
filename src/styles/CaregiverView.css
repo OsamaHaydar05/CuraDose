@@ -37,8 +37,8 @@
 }
 
 .cg-banner {
-  background: #e8f5ef;
-  border: 1px solid #d2e8dc;
+  background: #e3eef8;
+  border: 1px solid #cde5f5;
   border-radius: 14px;
   padding: 14px;
   display: flex;
@@ -101,7 +101,7 @@
 
 .cg-invite-tile--active {
   border-color: var(--color-green);
-  background: #f4fbf8;
+  background: #edf4fb;
   box-shadow: inset 0 0 0 1px var(--color-green);
 }
 
@@ -162,7 +162,7 @@
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: #e9f5ef;
+  background: #e3eef8;
   color: var(--color-green);
   display: grid;
   place-items: center;
@@ -205,7 +205,7 @@
 }
 
 .cg-email-input:focus {
-  outline: 2px solid rgba(42, 122, 92, 0.2);
+  outline: 2px solid rgba(26, 95, 138, 0.2);
   border-color: var(--color-green);
 }
 
