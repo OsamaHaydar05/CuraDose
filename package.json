@@ -21,6 +21,7 @@
   },
   "homepage": "https://github.com/OsamaHaydar05/CuraDose#readme",
   "dependencies": {
+    "@supabase/supabase-js": "^2.104.1",
     "express": "^5.2.1",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",

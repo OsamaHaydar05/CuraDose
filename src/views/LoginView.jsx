@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { loginUser, registerUser } from "../presenters/LoginPresenter";
 import "../styles/LoginView.css";
 
@@ -26,6 +26,12 @@ export default function LoginView({ theme = "system", setTheme }) {
     setScreen(getScreenFromPath(location.pathname));
   }, [location.pathname]);
 
+  useEffect(() => {
+    if (location.state?.authMessage) {
+      setErrorMessage(location.state.authMessage);
+    }
+  }, [location.state]);
+
   const authTitle = useMemo(() => {
     if (screen === "login") return "Log in to CuraDose";
     return "Create your CuraDose account";
@@ -49,7 +55,7 @@ export default function LoginView({ theme = "system", setTheme }) {
 
     try {
       await loginUser(loginForm.email.trim(), loginForm.password);
-      navigate("/dashboard");
+      navigate(location.state?.afterLoginPath || "/dashboard");
     } catch (error) {
       setErrorMessage(error.message || "Unable to log in.");
     } finally {
@@ -96,9 +102,6 @@ export default function LoginView({ theme = "system", setTheme }) {
               <a className="lp-nav-link" href="#features">
                 Features
               </a>
-              <Link className="lp-nav-link" to="/dashboard">
-                Dashboard
-              </Link>
               <a className="lp-nav-link" href="#how-it-works">
                 How it works
               </a>

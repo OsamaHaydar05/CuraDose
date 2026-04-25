@@ -1,15 +1,9 @@
-function sleep(ms) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
+import { saveUserHealthGoals } from "../services/medicationService";
 
 export async function saveHealthGoals(rating, goals, confidence) {
-  await sleep(400);
-
-  return {
+  return saveUserHealthGoals({
     rating,
     goals,
     confidence,
-  };
+  });
 }

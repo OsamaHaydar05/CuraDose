@@ -1,14 +1,13 @@
-function sleep(ms) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
+import { createCaregiverInvite } from "../services/caregiverService";
 
 export async function inviteCaregiver(email) {
-  await sleep(400);
+  const normalizedEmail = email?.trim();
 
-  return {
-    invited: Boolean(email),
-    email,
-  };
+  if (!normalizedEmail) {
+    return { invited: false, email: "" };
+  }
+
+  await createCaregiverInvite(normalizedEmail);
+
+  return { invited: true, email: normalizedEmail };
 }

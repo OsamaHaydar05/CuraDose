@@ -1,14 +1,7 @@
 import { CuraDoseUser } from "../models/CuraDoseModel";
-
-function sleep(ms) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
+import { signInWithEmail, signUpWithEmail } from "../services/authService";
 
 export async function loginUser(email, password) {
-  await sleep(500);
-
   if (!email || !password) {
     throw new Error("Email and password are required.");
   }
@@ -17,19 +10,18 @@ export async function loginUser(email, password) {
     throw new Error("Password must be at least 6 characters.");
   }
 
-  const derivedName = email.split("@")[0] || "CuraDose User";
+  const user = await signInWithEmail(email, password);
+  const derivedName = user.user_metadata?.full_name || email.split("@")[0] || "CuraDose User";
 
   return new CuraDoseUser({
-    id: "mock-user-1",
+    id: user.id,
     name: derivedName,
-    email,
-    role: "patient",
+    email: user.email,
+    role: user.user_metadata?.role || "patient",
   });
 }
 
 export async function registerUser(name, email, password, role) {
-  await sleep(700);
-
   if (!name || !email || !password || !role) {
     throw new Error("Please complete every field.");
   }
@@ -38,10 +30,12 @@ export async function registerUser(name, email, password, role) {
     throw new Error("Password must be at least 6 characters.");
   }
 
+  const user = await signUpWithEmail({ name, email, password, role });
+
   return new CuraDoseUser({
-    id: `mock-${Date.now()}`,
+    id: user.id,
     name,
-    email,
+    email: user.email,
     role,
   });
 }

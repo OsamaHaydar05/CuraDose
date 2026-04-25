@@ -37,8 +37,8 @@ export default function CaregiverView() {
       const normalizedEmail = inviteChoice === "yes" ? caregiverEmail.trim() : "";
       await inviteCaregiver(normalizedEmail);
       navigate("/dashboard");
-    } catch (_err) {
-      setError("Unable to complete account setup right now.");
+    } catch (err) {
+      setError(err.message || "Unable to complete account setup right now.");
     } finally {
       setIsSubmitting(false);
     }
