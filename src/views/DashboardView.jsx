@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { getDashboardData, markDoseTaken } from "../services/dashboardService";
+import { signOut } from "../services/authService";
 import "../styles/DashboardView.css";
 
 const fallbackWeeklyProgress = [
@@ -117,6 +119,16 @@ function DashboardIcon({ name }) {
     );
   }
 
+  if (name === "logout") {
+    return (
+      <svg {...commonProps}>
+        <path d="M10 5H5v14h5" />
+        <path d="M14 8l4 4-4 4" />
+        <path d="M8 12h10" />
+      </svg>
+    );
+  }
+
   return null;
 }
 
@@ -168,6 +180,7 @@ function ChartLine({ weeklyProgress, weeklyScore }) {
 }
 
 export default function DashboardView() {
+  const navigate = useNavigate();
   const [dashboardData, setDashboardData] = useState(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -210,6 +223,17 @@ export default function DashboardView() {
     }
   };
 
+  const handleLogout = async () => {
+    setError("");
+
+    try {
+      await signOut();
+      navigate("/login");
+    } catch (err) {
+      setError(err.message || "Unable to log out right now.");
+    }
+  };
+
   const data = dashboardData || {
     user: { firstName: "there", avatarInitial: "C" },
     streakDays: 0,
@@ -246,6 +270,9 @@ export default function DashboardView() {
                 <path d="M10 21h4" />
               </svg>
               <span />
+            </button>
+            <button className="dashboard-icon-btn" type="button" onClick={handleLogout} aria-label="Log out">
+              <DashboardIcon name="logout" />
             </button>
             <div className="dashboard-avatar" aria-label={`${data.user.firstName} profile`}>
               {data.user.avatarInitial}

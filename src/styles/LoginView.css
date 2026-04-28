@@ -647,6 +647,15 @@
   font-size: 0.9rem;
 }
 
+.auth-success {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: #e8f7ef;
+  color: #17613a;
+  font-size: 0.9rem;
+}
+
 .auth-form {
   display: flex;
   flex-direction: column;

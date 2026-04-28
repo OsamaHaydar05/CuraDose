@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { loginUser, registerUser } from "../presenters/LoginPresenter";
+import { loginUser, validateRegistration } from "../presenters/LoginPresenter";
+import { savePendingRegistration } from "../services/onboardingService";
 import "../styles/LoginView.css";
 
 const initialLoginState = { email: "", password: "" };
@@ -20,7 +21,6 @@ export default function LoginView({ theme = "system", setTheme }) {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [goal, setGoal] = useState("consistent");
 
   useEffect(() => {
     setScreen(getScreenFromPath(location.pathname));
@@ -69,13 +69,20 @@ export default function LoginView({ theme = "system", setTheme }) {
     setIsLoading(true);
 
     try {
-      const selectedRole = goal === "caregiver" ? "caregiver" : registerForm.role;
-      await registerUser(
-        registerForm.name.trim(),
-        registerForm.email.trim(),
-        registerForm.password,
-        selectedRole
+      const pendingRegistration = {
+        name: registerForm.name.trim(),
+        email: registerForm.email.trim(),
+        password: registerForm.password,
+        role: registerForm.role,
+      };
+
+      validateRegistration(
+        pendingRegistration.name,
+        pendingRegistration.email,
+        pendingRegistration.password,
+        pendingRegistration.role
       );
+      savePendingRegistration(pendingRegistration);
       navigate("/create-account/health-goals");
     } catch (error) {
       setErrorMessage(error.message || "Unable to create account.");
@@ -375,6 +382,8 @@ export default function LoginView({ theme = "system", setTheme }) {
               </p>
             </article>
 
+            {false ? (
+              <>
             <article className="reg-card reg-card--green">
               <header className="reg-card-header">
                 <span className="reg-card-icon" aria-hidden>
@@ -451,11 +460,14 @@ export default function LoginView({ theme = "system", setTheme }) {
               </div>
             </article>
 
+              </>
+            ) : null}
+
             {errorMessage ? <p className="auth-error">{errorMessage}</p> : null}
 
             <footer className="reg-footer">
               <button className="btn-primary reg-continue-btn" type="submit" disabled={isLoading}>
-                {isLoading ? "Creating account..." : "Continue"}
+                {isLoading ? "Continuing..." : "Continue"}
               </button>
               <p className="reg-login-copy">
                 Already have an account?{" "}

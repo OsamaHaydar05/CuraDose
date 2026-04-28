@@ -1,8 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { saveHealthGoals } from "../presenters/HealthGoalsPresenter";
-import { getCurrentSession } from "../services/authService";
-import { savePendingHealthGoals } from "../services/onboardingService";
+import { readPendingRegistration, savePendingHealthGoals } from "../services/onboardingService";
 import "../styles/HealthGoalsView.css";
 import "../styles/LoginView.css";
 
@@ -27,29 +25,8 @@ export default function HealthGoalsView() {
   const [confidence, setConfidence] = useState(7);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
-  const [hasSession, setHasSession] = useState(null);
 
   const sliderPercent = useMemo(() => ((confidence - 1) / 9) * 100, [confidence]);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    getCurrentSession()
-      .then((session) => {
-        if (isMounted) {
-          setHasSession(Boolean(session));
-        }
-      })
-      .catch(() => {
-        if (isMounted) {
-          setHasSession(false);
-        }
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   const toggleGoal = (goalId) => {
     setSelectedGoals((previous) => {
@@ -70,20 +47,13 @@ export default function HealthGoalsView() {
     setIsSaving(true);
 
     try {
-      const healthGoals = { rating, goals: selectedGoals, confidence };
-
-      if (hasSession === false) {
-        savePendingHealthGoals(healthGoals);
-        navigate("/login", {
-          state: {
-            afterLoginPath: "/create-account/caregiver",
-            authMessage: "Please log in to finish saving your health goals.",
-          },
-        });
-        return;
+      if (!readPendingRegistration()) {
+        throw new Error("Please start with your account information first.");
       }
 
-      await saveHealthGoals(rating, selectedGoals, confidence);
+      const healthGoals = { rating, goals: selectedGoals, confidence };
+
+      savePendingHealthGoals(healthGoals);
       navigate("/create-account/caregiver");
     } catch (err) {
       setError(err.message || "Unable to save your goals right now.");
@@ -289,7 +259,7 @@ export default function HealthGoalsView() {
             className="btn-primary"
             type="button"
             onClick={handleContinue}
-            disabled={isSaving || hasSession === null}
+            disabled={isSaving}
           >
             {isSaving ? "Saving..." : "Continue"}
           </button>

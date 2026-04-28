@@ -22,13 +22,7 @@ export async function loginUser(email, password) {
 }
 
 export async function registerUser(name, email, password, role) {
-  if (!name || !email || !password || !role) {
-    throw new Error("Please complete every field.");
-  }
-
-  if (password.length < 6) {
-    throw new Error("Password must be at least 6 characters.");
-  }
+  validateRegistration(name, email, password, role);
 
   const user = await signUpWithEmail({ name, email, password, role });
 
@@ -37,5 +31,16 @@ export async function registerUser(name, email, password, role) {
     name,
     email: user.email,
     role,
+    emailVerificationRequired: user.emailVerificationRequired,
   });
+}
+
+export function validateRegistration(name, email, password, role) {
+  if (!name || !email || !password || !role) {
+    throw new Error("Please complete every field.");
+  }
+
+  if (password.length < 6) {
+    throw new Error("Password must be at least 6 characters.");
+  }
 }

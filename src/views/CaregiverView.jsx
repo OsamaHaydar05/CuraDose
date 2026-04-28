@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { inviteCaregiver } from "../presenters/CaregiverPresenter";
+import { registerUser } from "../presenters/LoginPresenter";
+import {
+  readPendingRegistration,
+  savePendingCaregiverInvite,
+} from "../services/onboardingService";
 import "../styles/CaregiverView.css";
 import "../styles/LoginView.css";
 
@@ -28,14 +32,40 @@ export default function CaregiverView() {
   const [caregiverEmail, setCaregiverEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
-  const handleSubmit = async () => {
+  const handleSubmit = async ({ skipCaregiver = false } = {}) => {
     setError("");
+    setSuccessMessage("");
     setIsSubmitting(true);
 
     try {
-      const normalizedEmail = inviteChoice === "yes" ? caregiverEmail.trim() : "";
-      await inviteCaregiver(normalizedEmail);
+      const pendingRegistration = readPendingRegistration();
+
+      if (!pendingRegistration) {
+        throw new Error("Please start with your account information first.");
+      }
+
+      const normalizedEmail = !skipCaregiver && inviteChoice === "yes" ? caregiverEmail.trim() : "";
+
+      if (!skipCaregiver && inviteChoice === "yes" && !normalizedEmail) {
+        throw new Error("Enter your caregiver's email or choose to add one later.");
+      }
+
+      savePendingCaregiverInvite({ email: normalizedEmail });
+
+      const user = await registerUser(
+        pendingRegistration.name,
+        pendingRegistration.email,
+        pendingRegistration.password,
+        pendingRegistration.role
+      );
+
+      if (user.emailVerificationRequired) {
+        setSuccessMessage("Check your email to verify your account. After verifying, CuraDose will open your dashboard.");
+        return;
+      }
+
       navigate("/dashboard");
     } catch (err) {
       setError(err.message || "Unable to complete account setup right now.");
@@ -206,9 +236,10 @@ export default function CaregiverView() {
         </section>
 
         {error ? <p className="auth-error">{error}</p> : null}
+        {successMessage ? <p className="auth-success">{successMessage}</p> : null}
 
         <footer className="cg-footer">
-          <button className="cg-skip-link" type="button" onClick={() => navigate("/dashboard")}>
+          <button className="cg-skip-link" type="button" onClick={() => handleSubmit({ skipCaregiver: true })}>
             Skip for Now
           </button>
           <button className="btn-primary" type="button" onClick={handleSubmit} disabled={isSubmitting}>
