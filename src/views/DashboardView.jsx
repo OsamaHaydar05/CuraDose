@@ -17,9 +17,9 @@ const fallbackWeeklyProgress = [
 const quickActions = [
   { id: "medications", icon: "capsule", label: "My Medications" },
   { id: "inventory", icon: "bottle", label: "Inventory" },
+  { id: "device", icon: "scale", label: "Dispenser" },
   { id: "reminders", icon: "clock", label: "Reminders" },
   { id: "caregiver", icon: "users", label: "Caregiver" },
-  { id: "settings", icon: "gear", label: "Settings" },
 ];
 
 const navItems = [
@@ -54,6 +54,29 @@ function DashboardIcon({ name }) {
         <path d="M9 3h6v4H9V3Z" />
         <path d="M7.5 8.5h9v11A1.5 1.5 0 0 1 15 21H9a1.5 1.5 0 0 1-1.5-1.5v-11Z" />
         <path d="M10 13h4" />
+      </svg>
+    );
+  }
+
+  if (name === "scale") {
+    return (
+      <svg {...commonProps}>
+        <path d="M12 4v4" />
+        <path d="M7 8h10" />
+        <path d="M6 20h12" />
+        <path d="M8 8 5 17h6L8 8Z" />
+        <path d="m16 8-3 9h6l-3-9Z" />
+      </svg>
+    );
+  }
+
+  if (name === "signal") {
+    return (
+      <svg {...commonProps}>
+        <path d="M4 18h.01" />
+        <path d="M8 18a4 4 0 0 1 8 0" />
+        <path d="M5 12a10 10 0 0 1 14 0" />
+        <path d="M2 7a15 15 0 0 1 20 0" />
       </svg>
     );
   }
@@ -246,6 +269,34 @@ export default function DashboardView() {
     overviewCards: [],
     weeklyProgress: fallbackWeeklyProgress,
     weeklyScore: 0,
+    deviceStatus: {
+      title: "Smart Dispenser",
+      subtitle: "Software ready for the two-box hardware",
+      slots: [
+        {
+          id: "loading-slot-1",
+          slotNumber: 1,
+          label: "Box 1",
+          medicationName: "Loading",
+          pillCount: 0,
+          dispenserStatusText: "Not connected",
+          status: "setup_needed",
+          statusLabel: "Setup needed",
+          syncText: "No device sync yet",
+        },
+        {
+          id: "loading-slot-2",
+          slotNumber: 2,
+          label: "Box 2",
+          medicationName: "Loading",
+          pillCount: 0,
+          dispenserStatusText: "Not connected",
+          status: "setup_needed",
+          statusLabel: "Setup needed",
+          syncText: "No device sync yet",
+        },
+      ],
+    },
     healthTip: {
       title: "Health Tip",
       headline: "Drink water with your medication",
@@ -344,6 +395,41 @@ export default function DashboardView() {
                     <span style={{ width: `${card.progress}%` }} />
                   </div>
                 ) : null}
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="dashboard-section dashboard-device-section">
+          <div className="dashboard-section-heading">
+            <div>
+              <h2>{data.deviceStatus.title}</h2>
+              <p>{data.deviceStatus.subtitle}</p>
+            </div>
+            <span className="dashboard-device-sync">
+              <DashboardIcon name="signal" />
+              Future Pi sync
+            </span>
+          </div>
+          <div className="dashboard-device-grid">
+            {data.deviceStatus.slots.map((slot) => (
+              <article className={`dashboard-device-card dashboard-device-card--${slot.status}`} key={slot.id}>
+                <div className="dashboard-device-card-header">
+                  <span>{slot.label}</span>
+                  <strong>{slot.statusLabel}</strong>
+                </div>
+                <h3>{slot.medicationName}</h3>
+                <div className="dashboard-device-metrics">
+                  <div>
+                    <span>Pills</span>
+                    <strong>{slot.pillCount}</strong>
+                  </div>
+                  <div>
+                    <span>Dispenser</span>
+                    <strong>{slot.dispenserStatusText}</strong>
+                  </div>
+                </div>
+                <p>{slot.syncText}</p>
               </article>
             ))}
           </div>

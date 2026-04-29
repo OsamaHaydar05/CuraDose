@@ -49,6 +49,48 @@ create table if not exists public.caregiver_invites (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.devices (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null default 'CuraDose Dispenser',
+  status text not null default 'setup_needed' check (status in ('setup_needed', 'online', 'offline')),
+  last_seen_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.device_slots (
+  id bigint generated always as identity primary key,
+  device_id uuid not null references public.devices(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  slot_number integer not null check (slot_number in (1, 2)),
+  label text not null default 'Medication slot',
+  medication_id bigint references public.medications(id) on delete set null,
+  empty_weight_grams numeric(8, 2) not null default 0,
+  pill_weight_grams numeric(8, 3) not null default 1,
+  current_weight_grams numeric(8, 2),
+  current_pill_count integer not null default 0 check (current_pill_count >= 0),
+  last_pill_count integer not null default 0 check (last_pill_count >= 0),
+  status text not null default 'setup_needed' check (status in ('setup_needed', 'ready', 'low', 'empty')),
+  last_event_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (device_id, slot_number)
+);
+
+create table if not exists public.device_readings (
+  id bigint generated always as identity primary key,
+  device_id uuid not null references public.devices(id) on delete cascade,
+  slot_id bigint references public.device_slots(id) on delete set null,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  slot_number integer not null check (slot_number in (1, 2)),
+  weight_grams numeric(8, 2) not null,
+  pill_count integer not null check (pill_count >= 0),
+  event_type text not null default 'stable' check (event_type in ('stable', 'dose_taken', 'refill', 'calibration')),
+  raw_payload jsonb not null default '{}',
+  created_at timestamptz not null default now()
+);
+
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -79,6 +121,9 @@ alter table public.health_goals enable row level security;
 alter table public.medications enable row level security;
 alter table public.dose_logs enable row level security;
 alter table public.caregiver_invites enable row level security;
+alter table public.devices enable row level security;
+alter table public.device_slots enable row level security;
+alter table public.device_readings enable row level security;
 
 drop policy if exists "Users can read their own profile" on public.profiles;
 drop policy if exists "Users can create their own profile" on public.profiles;
@@ -96,6 +141,13 @@ drop policy if exists "Users can update their own dose logs" on public.dose_logs
 drop policy if exists "Users can delete their own dose logs" on public.dose_logs;
 drop policy if exists "Users can read their own caregiver invites" on public.caregiver_invites;
 drop policy if exists "Users can create their own caregiver invites" on public.caregiver_invites;
+drop policy if exists "Users can read their own devices" on public.devices;
+drop policy if exists "Users can create their own devices" on public.devices;
+drop policy if exists "Users can update their own devices" on public.devices;
+drop policy if exists "Users can read their own device slots" on public.device_slots;
+drop policy if exists "Users can create their own device slots" on public.device_slots;
+drop policy if exists "Users can update their own device slots" on public.device_slots;
+drop policy if exists "Users can read their own device readings" on public.device_readings;
 
 create policy "Users can read their own profile"
   on public.profiles for select
@@ -164,3 +216,33 @@ create policy "Users can read their own caregiver invites"
 create policy "Users can create their own caregiver invites"
   on public.caregiver_invites for insert
   with check (auth.uid() = patient_id);
+
+create policy "Users can read their own devices"
+  on public.devices for select
+  using (auth.uid() = user_id);
+
+create policy "Users can create their own devices"
+  on public.devices for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users can update their own devices"
+  on public.devices for update
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create policy "Users can read their own device slots"
+  on public.device_slots for select
+  using (auth.uid() = user_id);
+
+create policy "Users can create their own device slots"
+  on public.device_slots for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users can update their own device slots"
+  on public.device_slots for update
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create policy "Users can read their own device readings"
+  on public.device_readings for select
+  using (auth.uid() = user_id);

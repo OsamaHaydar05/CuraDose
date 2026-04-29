@@ -127,7 +127,7 @@ function healthTipForGoals(healthGoals) {
   };
 }
 
-function buildDashboardData({ user, profile, healthGoals, medications, doseLogs, caregiverInvites }) {
+function buildDashboardData({ user, profile, healthGoals, medications, doseLogs, caregiverInvites, deviceSlots }) {
   const now = new Date();
   const todayStart = startOfDay(now);
   const todayEnd = endOfDay(now);
@@ -215,8 +215,107 @@ function buildDashboardData({ user, profile, healthGoals, medications, doseLogs,
     ],
     weeklyProgress,
     weeklyScore,
+    deviceStatus: {
+      title: "Smart Dispenser",
+      subtitle: deviceSlots?.length
+        ? "Live slot data from the dispenser"
+        : "Software ready for the two-box hardware",
+      slots: buildDeviceSlots(deviceSlots, medications),
+    },
     healthTip: healthTipForGoals(healthGoals),
   };
+}
+
+function fallbackDeviceSlots(medications) {
+  const slots = [1, 2];
+
+  return slots.map((slotNumber, index) => {
+    const medication = medications[index];
+
+    return {
+      id: `future-slot-${slotNumber}`,
+      slotNumber,
+      label: `Box ${slotNumber}`,
+      medicationName: medication?.name || "Unassigned",
+      pillCount: medication?.remaining_pills ?? 0,
+      dispenserStatusText: "Not connected",
+      status: medication ? "setup_needed" : "unassigned",
+      statusLabel: medication ? "Hardware setup needed" : "Assign medication",
+      syncText: "No device sync yet",
+      source: "planned",
+    };
+  });
+}
+
+function formatRelativeTime(value) {
+  if (!value) return "No readings yet";
+
+  const timestamp = new Date(value).getTime();
+  const diffMs = Date.now() - timestamp;
+  const diffMinutes = Math.max(0, Math.round(diffMs / (60 * 1000)));
+
+  if (diffMinutes < 1) return "Just now";
+  if (diffMinutes < 60) return `${diffMinutes} min ago`;
+
+  const diffHours = Math.round(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours} hr ago`;
+
+  const diffDays = Math.round(diffHours / 24);
+  return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`;
+}
+
+function statusLabel(status) {
+  if (status === "ready") return "Ready";
+  if (status === "low") return "Low pills";
+  if (status === "empty") return "Empty";
+  if (status === "setup_needed") return "Setup needed";
+  return "Unknown";
+}
+
+function dispenserStatusText(status, pillCount) {
+  if (status === "empty") return "Needs refill";
+  if (status === "low") return "Low supply";
+  if (status === "ready" && pillCount > 0) return "Ready";
+  if (status === "setup_needed") return "Not connected";
+  return "Not configured";
+}
+
+function buildDeviceSlots(deviceSlots, medications) {
+  if (!deviceSlots?.length) {
+    return fallbackDeviceSlots(medications);
+  }
+
+  return [1, 2].map((slotNumber) => {
+    const slot = deviceSlots.find((item) => item.slot_number === slotNumber);
+
+    if (!slot) {
+      return {
+        id: `missing-slot-${slotNumber}`,
+        slotNumber,
+        label: `Box ${slotNumber}`,
+        medicationName: "Unassigned",
+        pillCount: 0,
+        dispenserStatusText: "Not configured",
+        status: "unassigned",
+        statusLabel: "Assign medication",
+        syncText: "No slot configured",
+        source: "planned",
+      };
+    }
+
+    return {
+      id: slot.id,
+      slotNumber,
+      label: slot.label || `Box ${slotNumber}`,
+      medicationName: slot.medications?.name || "Unassigned",
+      pillCount: slot.current_pill_count ?? 0,
+      status: slot.status || "setup_needed",
+      statusLabel: statusLabel(slot.status),
+      dispenserStatusText: dispenserStatusText(slot.status, slot.current_pill_count ?? 0),
+      syncText: formatRelativeTime(slot.last_event_at),
+      source: "device",
+    };
+  });
 }
 
 export async function getDashboardData() {
@@ -264,6 +363,12 @@ export async function getDashboardData() {
       .order("created_at", { ascending: false }),
   ]);
 
+  const deviceSlotsResult = await supabase
+    .from("device_slots")
+    .select("id,slot_number,label,current_weight_grams,current_pill_count,status,last_event_at,medications(name)")
+    .eq("user_id", user.id)
+    .order("slot_number", { ascending: true });
+
   const firstError = [
     profileResult.error,
     healthGoalsResult.error,
@@ -283,6 +388,7 @@ export async function getDashboardData() {
     medications: medicationsResult.data || [],
     doseLogs: doseLogsResult.data || [],
     caregiverInvites: caregiverInvitesResult.data || [],
+    deviceSlots: deviceSlotsResult.error ? [] : deviceSlotsResult.data || [],
   });
 }
 
