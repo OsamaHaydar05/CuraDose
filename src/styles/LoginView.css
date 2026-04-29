@@ -70,25 +70,6 @@
   line-height: 1.2;
 }
 
-.lp-nav-links {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-5);
-  flex-wrap: wrap;
-}
-
-.lp-nav-link {
-  color: var(--color-text-dark);
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
-.lp-nav-link:hover {
-  color: var(--color-green);
-}
-
 .lp-navbar-actions {
   display: flex;
   align-items: center;
@@ -432,14 +413,6 @@
 
   .lp-navbar-actions .lp-btn-nav {
     flex: 1;
-  }
-
-  .lp-nav-links {
-    justify-content: center;
-    width: 100%;
-    order: 3;
-    padding-top: var(--space-3);
-    border-top: 1px solid var(--color-border);
   }
 }
 

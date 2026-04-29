@@ -105,17 +105,6 @@ export default function LoginView({ theme = "system", setTheme }) {
                 <p className="lp-brand-tagline">Smart Medication, Better Health</p>
               </div>
             </div>
-            <nav className="lp-nav-links" aria-label="Primary">
-              <a className="lp-nav-link" href="#features">
-                Features
-              </a>
-              <a className="lp-nav-link" href="#how-it-works">
-                How it works
-              </a>
-              <a className="lp-nav-link" href="#caregiver">
-                Caregiver
-              </a>
-            </nav>
             <div className="lp-navbar-actions">
               <button
                 className="btn-outline lp-btn-nav lp-btn-nav-outline"
