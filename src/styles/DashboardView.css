@@ -91,14 +91,18 @@
   stroke-linejoin: round;
 }
 
-.dashboard-bell span {
+.dashboard-bell-dot {
   width: 11px;
   height: 11px;
   border-radius: 50%;
-  background: var(--color-green);
+  background: #a9b8c8;
   position: absolute;
   right: 8px;
   top: 7px;
+}
+
+.dashboard-bell--active .dashboard-bell-dot {
+  background: var(--color-green);
 }
 
 .dashboard-avatar {
@@ -230,6 +234,70 @@
 }
 
 .dashboard-dose-action button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.dashboard-reminder-card {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid #cbdce8;
+  border-radius: 16px;
+  background: #f8fbfe;
+}
+
+.dashboard-reminder-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #d8e9f5;
+  color: var(--color-green);
+}
+
+.dashboard-reminder-icon .dashboard-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.dashboard-reminder-card h2 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+}
+
+.dashboard-reminder-card p {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.dashboard-reminder-card strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--color-green);
+  font-size: 0.82rem;
+  line-height: 1.3;
+}
+
+.dashboard-reminder-card button {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  color: var(--color-white);
+  background: var(--color-green);
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.dashboard-reminder-card button:disabled {
   cursor: not-allowed;
   opacity: 0.58;
 }
@@ -778,6 +846,15 @@
 
   .dashboard-dose-action {
     grid-template-columns: 110px 1fr;
+  }
+
+  .dashboard-reminder-card {
+    grid-template-columns: 42px minmax(0, 1fr);
+  }
+
+  .dashboard-reminder-card button {
+    grid-column: 1 / -1;
+    width: 100%;
   }
 
   .dashboard-pill-art {

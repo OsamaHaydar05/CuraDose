@@ -2,6 +2,13 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getDashboardData, markDoseTaken } from "../services/dashboardService";
 import { signOut } from "../services/authService";
+import {
+  clearDoseNotificationTimers,
+  disableDoseNotifications,
+  getDoseNotificationState,
+  requestDoseNotificationPermission,
+  scheduleDoseNotifications,
+} from "../services/notificationService";
 import "../styles/DashboardView.css";
 
 const fallbackWeeklyProgress = [
@@ -208,6 +215,31 @@ export default function DashboardView() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isTakingDose, setIsTakingDose] = useState(false);
+  const [isUpdatingNotifications, setIsUpdatingNotifications] = useState(false);
+  const [notificationState, setNotificationState] = useState(() => getDoseNotificationState());
+  const [notificationMessage, setNotificationMessage] = useState("");
+
+  const syncDoseNotifications = async () => {
+    const currentState = getDoseNotificationState();
+
+    if (!currentState.enabled) {
+      setNotificationState(currentState);
+      return currentState;
+    }
+
+    try {
+      const nextState = await scheduleDoseNotifications();
+      setNotificationState(nextState);
+      return nextState;
+    } catch (err) {
+      const fallbackState = {
+        ...currentState,
+        description: err.message || "Unable to sync reminders right now.",
+      };
+      setNotificationState(fallbackState);
+      return fallbackState;
+    }
+  };
 
   const loadDashboard = async () => {
     setError("");
@@ -216,6 +248,7 @@ export default function DashboardView() {
     try {
       const data = await getDashboardData();
       setDashboardData(data);
+      await syncDoseNotifications();
     } catch (err) {
       setError(err.message || "Unable to load dashboard.");
     } finally {
@@ -225,6 +258,14 @@ export default function DashboardView() {
 
   useEffect(() => {
     loadDashboard();
+    syncDoseNotifications();
+
+    const reminderSync = window.setInterval(syncDoseNotifications, 60 * 1000);
+
+    return () => {
+      window.clearInterval(reminderSync);
+      clearDoseNotificationTimers();
+    };
   }, []);
 
   const handleTakeDose = async () => {
@@ -239,6 +280,7 @@ export default function DashboardView() {
         medicationId: dashboardData.nextDose.medicationId,
       });
       await loadDashboard();
+      await syncDoseNotifications();
     } catch (err) {
       setError(err.message || "Unable to save this dose.");
     } finally {
@@ -256,6 +298,47 @@ export default function DashboardView() {
       setError(err.message || "Unable to log out right now.");
     }
   };
+
+  const handleNotificationsToggle = async () => {
+    setNotificationMessage("");
+    setIsUpdatingNotifications(true);
+
+    try {
+      if (notificationState.enabled) {
+        const nextState = disableDoseNotifications();
+        setNotificationState(nextState);
+        setNotificationMessage("Dose reminders are off for this device.");
+        return;
+      }
+
+      const permissionState = await requestDoseNotificationPermission();
+
+      if (permissionState.permission !== "granted") {
+        setNotificationState(permissionState);
+        setNotificationMessage("Allow notifications in your browser to receive dose reminders.");
+        return;
+      }
+
+      const nextState = await scheduleDoseNotifications();
+      setNotificationState(nextState);
+      setNotificationMessage(
+        nextState.scheduledCount
+          ? "Your next dose reminder is ready."
+          : "Reminders are on. Add an upcoming dose to schedule the first alert."
+      );
+    } catch (err) {
+      setNotificationMessage(err.message || "Unable to update reminders right now.");
+    } finally {
+      setIsUpdatingNotifications(false);
+    }
+  };
+
+  const notificationButtonLabel = notificationState.enabled ? "Turn off" : "Enable";
+  const notificationDescription = notificationState.nextReminderText
+    ? `Next reminder: ${notificationState.nextReminderText}`
+    : notificationState.description;
+  const notificationButtonDisabled =
+    isUpdatingNotifications || notificationState.status === "unsupported" || notificationState.status === "denied";
 
   const data = dashboardData || {
     user: { firstName: "there", avatarInitial: "C" },
@@ -315,12 +398,18 @@ export default function DashboardView() {
             <span>CuraDose</span>
           </div>
           <div className="dashboard-header-actions">
-            <button className="dashboard-icon-btn dashboard-bell" type="button" aria-label="Notifications">
+            <button
+              className={notificationState.enabled ? "dashboard-icon-btn dashboard-bell dashboard-bell--active" : "dashboard-icon-btn dashboard-bell"}
+              type="button"
+              onClick={handleNotificationsToggle}
+              aria-label={notificationState.enabled ? "Turn off dose reminders" : "Enable dose reminders"}
+              title={notificationState.enabled ? "Dose reminders are on" : "Enable dose reminders"}
+            >
               <svg viewBox="0 0 24 24" aria-hidden>
                 <path d="M18 16v-5a6 6 0 1 0-12 0v5l-2 2h16l-2-2Z" />
                 <path d="M10 21h4" />
               </svg>
-              <span />
+              <span className="dashboard-bell-dot" />
             </button>
             <button className="dashboard-icon-btn" type="button" onClick={handleLogout} aria-label="Log out">
               <DashboardIcon name="logout" />
@@ -368,6 +457,20 @@ export default function DashboardView() {
               {isTakingDose ? "Saving..." : "Take Dose"}
             </button>
           </div>
+        </section>
+
+        <section className="dashboard-reminder-card" aria-label="Dose reminders">
+          <span className="dashboard-reminder-icon">
+            <DashboardIcon name="clock" />
+          </span>
+          <div>
+            <h2>Dose reminders</h2>
+            <p>{notificationDescription}</p>
+            {notificationMessage ? <strong>{notificationMessage}</strong> : null}
+          </div>
+          <button type="button" onClick={handleNotificationsToggle} disabled={notificationButtonDisabled}>
+            {isUpdatingNotifications ? "Saving..." : notificationButtonLabel}
+          </button>
         </section>
 
         <div className="dashboard-carousel-dots" aria-hidden>
