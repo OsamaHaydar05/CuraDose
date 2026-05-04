@@ -50,7 +50,7 @@
 .med-header-title h1 {
   margin: 0;
   font-size: 1.45rem;
-  color: var(--color-navy);
+  color: var(--color-text-dark);
   line-height: 1.15;
 }
 
@@ -217,7 +217,7 @@
 
 .med-card-heading h3 {
   margin: 0;
-  color: var(--color-navy);
+  color: var(--color-text-dark);
   font-size: 1.1rem;
   line-height: 1.2;
   word-break: break-word;
@@ -258,7 +258,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: var(--color-navy);
+  color: var(--color-text-dark);
   font-weight: 700;
   font-size: 0.95rem;
 }
@@ -350,7 +350,7 @@
 .med-empty-state--card h2 {
   margin: 4px 0 0;
   font-size: 1.2rem;
-  color: var(--color-navy);
+  color: var(--color-text-dark);
 }
 
 .med-empty-state--card p {
@@ -442,7 +442,7 @@
 .med-modal-header h2 {
   margin: 0;
   font-size: 1.25rem;
-  color: var(--color-navy);
+  color: var(--color-text-dark);
 }
 
 .med-modal-close {
@@ -476,7 +476,7 @@
   border-radius: 12px;
   padding: 11px 12px;
   background: var(--color-white);
-  color: var(--color-navy);
+  color: var(--color-text-dark);
   font-size: 0.98rem;
   font-family: inherit;
   outline: none;
@@ -510,6 +510,54 @@
   justify-content: flex-end;
   gap: 10px;
   margin-top: 4px;
+}
+
+[data-theme="dark"] .med-back-button,
+[data-theme="dark"] .med-card,
+[data-theme="dark"] .med-empty-state--card,
+[data-theme="dark"] .med-modal,
+[data-theme="dark"] .med-icon-button {
+  border-color: var(--color-border);
+  background: var(--color-white);
+  color: var(--color-text-dark);
+}
+
+[data-theme="dark"] .med-card-icon,
+[data-theme="dark"] .med-empty-icon,
+[data-theme="dark"] .med-readonly-pill,
+[data-theme="dark"] .med-card-dosage,
+[data-theme="dark"] .med-modal-close {
+  background: #173653;
+  color: #8fc7f0;
+}
+
+[data-theme="dark"] .med-card-instructions,
+[data-theme="dark"] .med-icon-button--locked {
+  background: #102b45;
+  color: var(--color-text-muted);
+}
+
+[data-theme="dark"] .med-field input,
+[data-theme="dark"] .med-field select,
+[data-theme="dark"] .med-field textarea {
+  border-color: var(--color-border);
+  background: #07192b;
+  color: var(--color-text-dark);
+}
+
+[data-theme="dark"] .med-field input::placeholder,
+[data-theme="dark"] .med-field textarea::placeholder {
+  color: #6f879b;
+}
+
+[data-theme="dark"] .med-field select option {
+  background: #07192b;
+  color: var(--color-text-dark);
+}
+
+[data-theme="dark"] .med-feedback {
+  background: #173653;
+  color: #8fc7f0;
 }
 
 @media (max-width: 430px) {

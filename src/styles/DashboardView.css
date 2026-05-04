@@ -417,9 +417,11 @@ button.dashboard-nav-card:hover {
 }
 
 .dashboard-overview-card {
+  min-width: 0;
   min-height: 154px;
   border-radius: 14px;
   background: var(--color-white);
+  color: var(--color-text-dark);
   padding: 16px 14px;
   box-shadow: var(--shadow-card);
 }
@@ -440,12 +442,16 @@ button.dashboard-nav-card:hover {
   margin: 0 0 8px;
   font-size: 0.94rem;
   line-height: 1.25;
+  color: var(--color-text-dark);
+  overflow-wrap: anywhere;
 }
 
 .dashboard-overview-card strong {
   display: block;
   margin-bottom: 4px;
   font-size: 1.35rem;
+  color: var(--color-text-dark);
+  overflow-wrap: anywhere;
 }
 
 .dashboard-overview-card p {
@@ -453,6 +459,7 @@ button.dashboard-nav-card:hover {
   color: var(--color-text-muted);
   font-size: 0.9rem;
   line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .dashboard-progress-track {
@@ -763,7 +770,7 @@ button.dashboard-nav-card:hover {
   border: 0;
   border-radius: 14px;
   background: var(--color-white);
-  color: var(--color-navy);
+  color: var(--color-text-dark);
   display: grid;
   justify-items: center;
   align-content: center;
@@ -784,7 +791,67 @@ button.dashboard-nav-card:hover {
   font-size: 0.76rem;
   font-weight: 700;
   line-height: 1.15;
+  color: var(--color-text-dark);
   overflow-wrap: anywhere;
+}
+
+[data-theme="dark"] .dashboard-page {
+  background: #061626;
+  color: var(--color-text-dark);
+}
+
+[data-theme="dark"] .dashboard-shell {
+  background: #07192b;
+}
+
+[data-theme="dark"] .dashboard-greeting p,
+[data-theme="dark"] .dashboard-greeting h1 span,
+[data-theme="dark"] .dashboard-header-title,
+[data-theme="dark"] .dashboard-section h2,
+[data-theme="dark"] .dashboard-progress-heading h2,
+[data-theme="dark"] .dashboard-actions-section h2 {
+  color: var(--color-text-dark);
+}
+
+[data-theme="dark"] .dashboard-streak,
+[data-theme="dark"] .dashboard-reminder-card,
+[data-theme="dark"] .dashboard-overview-card,
+[data-theme="dark"] .dashboard-device-section,
+[data-theme="dark"] .dashboard-device-card,
+[data-theme="dark"] .dashboard-tip-card,
+[data-theme="dark"] .dashboard-action-card {
+  border-color: var(--color-border);
+  background: var(--color-white);
+  color: var(--color-text-dark);
+}
+
+[data-theme="dark"] .dashboard-card-icon,
+[data-theme="dark"] .dashboard-reminder-icon,
+[data-theme="dark"] .dashboard-device-sync,
+[data-theme="dark"] .dashboard-device-card-header strong,
+[data-theme="dark"] .dashboard-chart-score span {
+  background: #173653;
+  color: #8fc7f0;
+}
+
+[data-theme="dark"] .dashboard-overview-card h3,
+[data-theme="dark"] .dashboard-overview-card strong,
+[data-theme="dark"] .dashboard-action-card,
+[data-theme="dark"] .dashboard-action-card span,
+[data-theme="dark"] .dashboard-device-card h3,
+[data-theme="dark"] .dashboard-device-metrics strong,
+[data-theme="dark"] .dashboard-nav-card {
+  color: var(--color-text-dark);
+}
+
+[data-theme="dark"] .dashboard-device-metrics div,
+[data-theme="dark"] .dashboard-progress-track {
+  background: #102b45;
+}
+
+[data-theme="dark"] .dashboard-bottom-nav {
+  border-top-color: var(--color-border);
+  background: rgba(15, 41, 65, 0.95);
 }
 
 .dashboard-bottom-nav {
