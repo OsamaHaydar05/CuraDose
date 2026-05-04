@@ -854,6 +854,21 @@ button.dashboard-nav-card:hover {
   background: rgba(15, 41, 65, 0.95);
 }
 
+[data-theme="dark"] .dashboard-icon-btn {
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  background: rgba(255, 255, 255, 0.06);
+  color: #d9efff;
+}
+
+[data-theme="dark"] .dashboard-icon-btn:hover {
+  border-color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+[data-theme="dark"] .dashboard-bell-dot {
+  border: 1px solid #d9efff;
+}
+
 .dashboard-bottom-nav {
   position: fixed;
   left: 50%;

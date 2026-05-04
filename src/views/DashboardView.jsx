@@ -32,7 +32,6 @@ const quickActions = [
 const navItems = [
   { id: "home", icon: "home", label: "Home", active: true },
   { id: "history", icon: "history", label: "History" },
-  { id: "scan", icon: "scan", label: "Scan" },
   { id: "caregiver", icon: "users", label: "Caregiver" },
   { id: "settings", icon: "gear", label: "Settings" },
 ];
