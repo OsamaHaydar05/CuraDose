@@ -4,6 +4,7 @@ import LoginView from "./views/LoginView";
 import DashboardView from "./views/DashboardView";
 import HealthGoalsView from "./views/HealthGoalsView";
 import CaregiverView from "./views/CaregiverView";
+import MedicationScheduleView from "./views/MedicationScheduleView";
 import { getCurrentSession } from "./services/authService";
 
 const THEME_STORAGE_KEY = "curadose-theme";
@@ -112,6 +113,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <DashboardView />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/medications"
+          element={
+            <ProtectedRoute>
+              <MedicationScheduleView />
             </ProtectedRoute>
           }
         />

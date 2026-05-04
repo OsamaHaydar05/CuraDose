@@ -22,6 +22,8 @@ create table if not exists public.medications (
   name text not null,
   dosage text,
   instructions text,
+  frequency text,
+  schedule_time time,
   remaining_pills integer not null default 0 check (remaining_pills >= 0),
   refill_threshold integer not null default 6 check (refill_threshold >= 0),
   next_dose_at timestamptz,
@@ -29,6 +31,9 @@ create table if not exists public.medications (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.medications add column if not exists frequency text;
+alter table public.medications add column if not exists schedule_time time;
 
 create table if not exists public.dose_logs (
   id bigint generated always as identity primary key,

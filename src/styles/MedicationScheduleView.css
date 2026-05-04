@@ -1,0 +1,537 @@
+.med-shell {
+  padding-bottom: 40px;
+}
+
+.med-header {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 0 18px;
+}
+
+.med-back-button,
+.med-add-button {
+  border: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 50%;
+}
+
+.med-back-button {
+  width: 44px;
+  height: 44px;
+  background: var(--color-white);
+  color: var(--color-navy);
+  box-shadow: var(--shadow-card);
+}
+
+.med-back-button:hover {
+  background: #d8e9f5;
+}
+
+.med-header-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.med-header-eyebrow {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.med-header-title h1 {
+  margin: 0;
+  font-size: 1.45rem;
+  color: var(--color-navy);
+  line-height: 1.15;
+}
+
+.med-add-button {
+  height: 44px;
+  padding: 0 16px;
+  border-radius: var(--radius-pill);
+  background: var(--color-green);
+  color: var(--color-white);
+  font-weight: 800;
+  font-size: 0.92rem;
+  box-shadow: var(--shadow-card);
+}
+
+.med-add-button:hover {
+  background: var(--color-green-dark);
+}
+
+.med-add-button .med-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.med-readonly-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: var(--radius-pill);
+  background: #d8e9f5;
+  color: var(--color-green);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.med-readonly-pill .med-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.med-icon {
+  width: 22px;
+  height: 22px;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.med-banner {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 14px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border-radius: 16px;
+  margin-bottom: 14px;
+}
+
+.med-banner--managed {
+  background: #fff5e1;
+  border: 1px solid #f3d8a6;
+  color: #6b4a16;
+}
+
+.med-banner--caregiver {
+  background: #e6f3ec;
+  border: 1px solid #b8dcc4;
+  color: #1f4d33;
+}
+
+.med-banner-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.med-banner-icon .med-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.med-banner strong {
+  display: block;
+  font-size: 1rem;
+  margin-bottom: 2px;
+}
+
+.med-banner p {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.med-banner small {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.78rem;
+  opacity: 0.85;
+}
+
+.med-feedback {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #e3eef8;
+  color: var(--color-green);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.med-list-section {
+  margin-top: 6px;
+}
+
+.med-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.med-card {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 16px;
+  background: var(--color-white);
+  border-radius: 18px;
+  border: 1px solid #d8e3ed;
+  box-shadow: var(--shadow-card);
+}
+
+.med-card-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  background: #d8e9f5;
+  color: var(--color-green);
+}
+
+.med-card-icon .med-icon {
+  width: 26px;
+  height: 26px;
+}
+
+.med-card-body {
+  min-width: 0;
+}
+
+.med-card-heading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.med-card-heading h3 {
+  margin: 0;
+  color: var(--color-navy);
+  font-size: 1.1rem;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.med-card-dosage {
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  background: #edf4fb;
+  color: var(--color-green);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.med-card-meta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  margin: 0;
+}
+
+.med-card-meta div {
+  min-width: 0;
+}
+
+.med-card-meta dt {
+  margin: 0;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.med-card-meta dd {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-navy);
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.med-card-meta dd .med-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--color-green);
+}
+
+.med-card-instructions {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  background: #f6f9fc;
+  border-radius: 12px;
+  color: var(--color-text-muted);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.med-card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.med-icon-button {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  border: 1px solid #d8e3ed;
+  background: var(--color-white);
+  color: var(--color-navy);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.med-icon-button:hover {
+  background: #edf4fb;
+}
+
+.med-icon-button .med-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.med-icon-button--ghost {
+  color: var(--color-green);
+}
+
+.med-icon-button--danger {
+  color: #b4233c;
+  border-color: #f3c8d2;
+}
+
+.med-icon-button--danger:hover {
+  background: #fff0f3;
+}
+
+.med-icon-button--locked {
+  cursor: not-allowed;
+  color: var(--color-text-muted);
+  background: #eef2f7;
+}
+
+.med-icon-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.med-empty-state {
+  margin: 20px 0;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 1rem;
+}
+
+.med-empty-state--card {
+  padding: 28px 22px;
+  background: var(--color-white);
+  border-radius: 18px;
+  border: 1px dashed #c4d3e0;
+  box-shadow: var(--shadow-card);
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+}
+
+.med-empty-state--card h2 {
+  margin: 4px 0 0;
+  font-size: 1.2rem;
+  color: var(--color-navy);
+}
+
+.med-empty-state--card p {
+  margin: 0;
+  max-width: 32ch;
+  line-height: 1.45;
+}
+
+.med-empty-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #d8e9f5;
+  color: var(--color-green);
+  display: grid;
+  place-items: center;
+}
+
+.med-empty-icon .med-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.med-button {
+  border: 0;
+  cursor: pointer;
+  padding: 12px 18px;
+  border-radius: var(--radius-pill);
+  font-weight: 800;
+  font-size: 0.95rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.med-button .med-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.med-button--primary {
+  background: var(--color-green);
+  color: var(--color-white);
+}
+
+.med-button--primary:hover {
+  background: var(--color-green-dark);
+}
+
+.med-button--ghost {
+  background: transparent;
+  color: var(--color-text-muted);
+}
+
+.med-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.med-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(13, 43, 62, 0.45);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  z-index: 60;
+}
+
+.med-modal {
+  width: min(100%, 440px);
+  max-height: 92vh;
+  overflow-y: auto;
+  background: var(--color-white);
+  border-radius: 22px;
+  padding: 22px;
+  box-shadow: 0 24px 70px rgba(13, 43, 62, 0.32);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.med-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.med-modal-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--color-navy);
+}
+
+.med-modal-close {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: #edf4fb;
+  color: var(--color-navy);
+  font-size: 1.4rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.med-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.med-field span {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  font-weight: 700;
+}
+
+.med-field input,
+.med-field select,
+.med-field textarea {
+  border: 1px solid #d8e3ed;
+  border-radius: 12px;
+  padding: 11px 12px;
+  background: var(--color-white);
+  color: var(--color-navy);
+  font-size: 0.98rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.med-field input:focus,
+.med-field select:focus,
+.med-field textarea:focus {
+  border-color: var(--color-green);
+  box-shadow: 0 0 0 3px rgba(26, 95, 138, 0.18);
+}
+
+.med-field textarea {
+  resize: vertical;
+}
+
+.med-field-error {
+  color: #b4233c;
+  font-size: 0.82rem;
+}
+
+.med-field-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.med-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+@media (max-width: 430px) {
+  .med-card {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .med-card-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+
+  .med-field-row {
+    grid-template-columns: 1fr;
+  }
+
+  .med-add-button span {
+    display: none;
+  }
+
+  .med-add-button {
+    width: 44px;
+    padding: 0;
+  }
+}

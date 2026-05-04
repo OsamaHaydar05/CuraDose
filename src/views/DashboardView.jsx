@@ -22,7 +22,7 @@ const fallbackWeeklyProgress = [
 ];
 
 const quickActions = [
-  { id: "medications", icon: "capsule", label: "My Medications" },
+  { id: "medications", icon: "capsule", label: "Medication Schedule", path: "/medications" },
   { id: "inventory", icon: "bottle", label: "Inventory" },
   { id: "device", icon: "scale", label: "Dispenser" },
   { id: "reminders", icon: "clock", label: "Reminders" },
@@ -473,6 +473,24 @@ export default function DashboardView() {
           </button>
         </section>
 
+        <button
+          type="button"
+          className="dashboard-reminder-card dashboard-nav-card"
+          aria-label="Open medication schedule"
+          onClick={() => navigate("/medications")}
+        >
+          <span className="dashboard-reminder-icon">
+            <DashboardIcon name="capsule" />
+          </span>
+          <div>
+            <h2>Medication Schedule</h2>
+            <p>View, add, and edit your daily medications.</p>
+          </div>
+          <span className="dashboard-nav-card-cta" aria-hidden>
+            Open
+          </span>
+        </button>
+
         <div className="dashboard-carousel-dots" aria-hidden>
           <span className="dashboard-carousel-dot--active" />
           <span />
@@ -571,7 +589,14 @@ export default function DashboardView() {
           <h2>Quick Actions</h2>
           <div className="dashboard-actions-grid">
             {quickActions.map((action) => (
-              <button className="dashboard-action-card" type="button" key={action.id}>
+              <button
+                className="dashboard-action-card"
+                type="button"
+                key={action.id}
+                onClick={() => {
+                  if (action.path) navigate(action.path);
+                }}
+              >
                 <DashboardIcon name={action.icon} />
                 <span>{action.label}</span>
               </button>

@@ -302,6 +302,30 @@
   opacity: 0.58;
 }
 
+button.dashboard-nav-card {
+  width: 100%;
+  margin-top: 12px;
+  border: 1px solid #cbdce8;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: var(--color-navy);
+}
+
+button.dashboard-nav-card:hover {
+  background: #eef6fb;
+}
+
+.dashboard-nav-card-cta {
+  align-self: center;
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--color-green);
+  color: var(--color-white);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .dashboard-error {
   margin: 18px 0 0;
   padding: 14px 16px;
