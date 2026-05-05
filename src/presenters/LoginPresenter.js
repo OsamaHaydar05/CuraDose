@@ -21,10 +21,10 @@ export async function loginUser(email, password) {
   });
 }
 
-export async function registerUser(name, email, password, role) {
+export async function registerUser(name, email, password, role, options = {}) {
   validateRegistration(name, email, password, role);
 
-  const user = await signUpWithEmail({ name, email, password, role });
+  const user = await signUpWithEmail({ name, email, password, role, ...options });
 
   return new CuraDoseUser({
     id: user.id,

@@ -292,7 +292,7 @@ export default function DashboardView() {
 
     try {
       await signOut();
-      navigate("/login");
+      navigate("/");
     } catch (err) {
       setError(err.message || "Unable to log out right now.");
     }

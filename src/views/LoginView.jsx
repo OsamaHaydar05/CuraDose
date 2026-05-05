@@ -131,8 +131,20 @@ export default function LoginView({ theme = "system", setTheme }) {
         }
       }
 
-      await registerUser(formData.name, formData.email, formData.password, formData.role);
-      navigate("/dashboard");
+      const user = await registerUser(formData.name, formData.email, formData.password, formData.role, {
+        caregiverType: formData.caregiverType,
+        region: formData.region,
+        hospital: formData.hospital,
+        title: formData.title,
+      });
+
+      navigate("/caregiver/login", {
+        state: {
+          authMessage: user.emailVerificationRequired
+            ? "Check your email to verify your caregiver account, then log in here."
+            : "Caregiver account created. You can log in here.",
+        },
+      });
     } catch (error) {
       setErrorMessage(error.message || "Unable to create caregiver account.");
     } finally {

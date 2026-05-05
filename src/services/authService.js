@@ -57,19 +57,39 @@ export async function signInWithEmail(email, password) {
   return data.user;
 }
 
-export async function signUpWithEmail({ name, email, password, role }) {
+export async function signUpWithEmail({
+  name,
+  email,
+  password,
+  role,
+  caregiverType,
+  region,
+  hospital,
+  title,
+}) {
   const emailRedirectTo =
-    typeof window === "undefined" ? undefined : `${window.location.origin}/dashboard`;
+    typeof window === "undefined"
+      ? undefined
+      : `${window.location.origin}${role === "caregiver" ? "/caregiver/login" : "/dashboard"}`;
+
+  const metadata = {
+    full_name: name,
+    role,
+  };
+
+  if (role === "caregiver") {
+    metadata.caregiver_type = caregiverType || "private";
+    metadata.region = region || "";
+    metadata.hospital = hospital || "";
+    metadata.title = title || "";
+  }
 
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
       emailRedirectTo,
-      data: {
-        full_name: name,
-        role,
-      },
+      data: metadata,
     },
   });
 
