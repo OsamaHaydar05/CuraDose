@@ -106,6 +106,8 @@ export default function App() {
         <Route path="/" element={<LoginView theme={theme} setTheme={setTheme} />} />
         <Route path="/login" element={<LoginView theme={theme} setTheme={setTheme} />} />
         <Route path="/create-account" element={<LoginView theme={theme} setTheme={setTheme} />} />
+        <Route path="/caregiver/login" element={<LoginView theme={theme} setTheme={setTheme} />} />
+        <Route path="/caregiver/signup" element={<LoginView theme={theme} setTheme={setTheme} />} />
         <Route path="/create-account/health-goals" element={<HealthGoalsView />} />
         <Route path="/create-account/caregiver" element={<CaregiverView />} />
         <Route

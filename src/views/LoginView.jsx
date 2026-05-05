@@ -1,11 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { loginUser, validateRegistration } from "../presenters/LoginPresenter";
+import { loginUser, registerUser, validateRegistration } from "../presenters/LoginPresenter";
 import { savePendingRegistration } from "../services/onboardingService";
 import "../styles/LoginView.css";
 
 const initialLoginState = { email: "", password: "" };
 const initialRegisterState = { name: "", email: "", password: "", role: "patient" };
+const initialCaregiverRegisterState = {
+  name: "",
+  email: "",
+  password: "",
+  role: "caregiver",
+  caregiverType: "private",
+  region: "",
+  hospital: "",
+  title: "",
+};
 
 export default function LoginView({ theme = "system", setTheme }) {
   const navigate = useNavigate();
@@ -13,11 +23,14 @@ export default function LoginView({ theme = "system", setTheme }) {
   const getScreenFromPath = (pathname) => {
     if (pathname === "/create-account") return "register";
     if (pathname === "/login") return "login";
+    if (pathname === "/caregiver/login") return "caregiver-login";
+    if (pathname === "/caregiver/signup") return "caregiver-register";
     return "landing";
   };
   const [screen, setScreen] = useState(getScreenFromPath(location.pathname));
   const [loginForm, setLoginForm] = useState(initialLoginState);
   const [registerForm, setRegisterForm] = useState(initialRegisterState);
+  const [caregiverRegisterForm, setCaregiverRegisterForm] = useState(initialCaregiverRegisterState);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -33,7 +46,9 @@ export default function LoginView({ theme = "system", setTheme }) {
   }, [location.state]);
 
   const authTitle = useMemo(() => {
+    if (screen === "caregiver-login") return "Caregiver Login";
     if (screen === "login") return "Log in to CuraDose";
+    if (screen === "caregiver-register") return "Create Caregiver Account";
     return "Create your CuraDose account";
   }, [screen]);
 
@@ -91,6 +106,40 @@ export default function LoginView({ theme = "system", setTheme }) {
     }
   };
 
+  const submitCaregiverRegister = async (event) => {
+    event.preventDefault();
+    setErrorMessage("");
+    setIsLoading(true);
+
+    try {
+      const formData = {
+        name: caregiverRegisterForm.name.trim(),
+        email: caregiverRegisterForm.email.trim(),
+        password: caregiverRegisterForm.password,
+        role: "caregiver",
+        caregiverType: caregiverRegisterForm.caregiverType,
+        region: caregiverRegisterForm.region.trim(),
+        hospital: caregiverRegisterForm.hospital.trim(),
+        title: caregiverRegisterForm.title.trim(),
+      };
+
+      validateRegistration(formData.name, formData.email, formData.password, formData.role);
+
+      if (formData.caregiverType === "professional") {
+        if (!formData.region || !formData.hospital || !formData.title) {
+          throw new Error("Please complete region, hospital/clinic, and title.");
+        }
+      }
+
+      await registerUser(formData.name, formData.email, formData.password, formData.role);
+      navigate("/dashboard");
+    } catch (error) {
+      setErrorMessage(error.message || "Unable to create caregiver account.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (screen === "landing") {
     return (
       <main className="login-page lp-landing">
@@ -106,20 +155,33 @@ export default function LoginView({ theme = "system", setTheme }) {
               </div>
             </div>
             <div className="lp-navbar-actions">
-              <button
-                className="btn-outline lp-btn-nav lp-btn-nav-outline"
-                type="button"
-                onClick={() => navigate("/login")}
-              >
-                Log In
-              </button>
-              <button
-                className="btn-primary lp-btn-nav"
-                type="button"
-                onClick={() => navigate("/create-account")}
-              >
-                Create Account
-              </button>
+              <div className="lp-nav-dropdown">
+                <button className="btn-outline lp-btn-nav lp-btn-nav-outline" type="button">
+                  Log In
+                </button>
+                <div className="lp-nav-dropdown-menu">
+                  <button type="button" onClick={() => navigate("/login")}>
+                    User
+                  </button>
+                  <button type="button" onClick={() => navigate("/caregiver/login")}>
+                    Caregiver
+                  </button>
+                </div>
+              </div>
+
+              <div className="lp-nav-dropdown">
+                <button className="btn-primary lp-btn-nav" type="button">
+                  Create Account
+                </button>
+                <div className="lp-nav-dropdown-menu">
+                  <button type="button" onClick={() => navigate("/create-account")}>
+                    User
+                  </button>
+                  <button type="button" onClick={() => navigate("/caregiver/signup")}>
+                    Caregiver
+                  </button>
+                </div>
+              </div>
             </div>
           </header>
 
@@ -162,8 +224,12 @@ export default function LoginView({ theme = "system", setTheme }) {
                 >
                   Get Started
                 </button>
-                <button className="btn-outline lp-cta-secondary" type="button">
-                  Watch Demo
+                <button
+                  className="btn-outline lp-cta-secondary"
+                  type="button"
+                  onClick={() => navigate("/caregiver/signup")}
+                >
+                  Join as Caregiver
                 </button>
               </div>
               <div className="lp-stat-row" id="features">
@@ -471,6 +537,214 @@ export default function LoginView({ theme = "system", setTheme }) {
     );
   }
 
+  if (screen === "caregiver-register") {
+    return (
+      <main className="login-page">
+        <section className="reg-page">
+          <header className="reg-header">
+            <button className="reg-back-btn" type="button" onClick={backToLanding} aria-label="Back">
+              &lt;
+            </button>
+            <span className="reg-header-title">Caregiver Sign Up</span>
+          </header>
+
+          <section className="reg-hero">
+            <div>
+              <h1 className="reg-hero-title">
+                <span>Support with </span>
+                <span className="reg-hero-title-accent">Care.</span>
+              </h1>
+              <p className="reg-hero-subtitle">
+                Create a caregiver account and connect with a patient when access is approved.
+              </p>
+            </div>
+          </section>
+
+          <form className="reg-form" onSubmit={submitCaregiverRegister}>
+            <article className="reg-card">
+              <header className="reg-card-header">
+                <span className="reg-card-icon" aria-hidden>
+                  CG
+                </span>
+                <div>
+                  <h2>Caregiver Information</h2>
+                  <p>Tell us who you are as a caregiver.</p>
+                </div>
+              </header>
+
+              <div className="reg-input-row">
+                <label className="reg-input-wrap" htmlFor="caregiver-name">
+                  <span className="reg-input-icon" aria-hidden>
+                    ID
+                  </span>
+                  <input
+                    id="caregiver-name"
+                    className="reg-input"
+                    name="name"
+                    type="text"
+                    autoComplete="name"
+                    placeholder="Full Name"
+                    value={caregiverRegisterForm.name}
+                    onChange={handleInputChange(setCaregiverRegisterForm)}
+                    required
+                  />
+                </label>
+
+                <label className="reg-input-wrap" htmlFor="caregiver-email">
+                  <span className="reg-input-icon" aria-hidden>
+                    @
+                  </span>
+                  <input
+                    id="caregiver-email"
+                    className="reg-input"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="Email Address"
+                    value={caregiverRegisterForm.email}
+                    onChange={handleInputChange(setCaregiverRegisterForm)}
+                    required
+                  />
+                </label>
+              </div>
+
+              <label className="reg-input-wrap reg-input-wrap--full" htmlFor="caregiver-password">
+                <span className="reg-input-icon" aria-hidden>
+                  PW
+                </span>
+                <input
+                  id="caregiver-password"
+                  className="reg-input reg-input--password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="new-password"
+                  placeholder="Create Password"
+                  value={caregiverRegisterForm.password}
+                  onChange={handleInputChange(setCaregiverRegisterForm)}
+                  required
+                />
+                <button
+                  className="reg-password-toggle"
+                  type="button"
+                  onClick={() => setShowPassword((previous) => !previous)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? "Hide" : "Show"}
+                </button>
+              </label>
+
+              <p className="reg-helper-text">
+                Use 8+ characters with a mix of letters, numbers &amp; symbols.
+              </p>
+            </article>
+
+            <article className="reg-card reg-card--blue">
+              <header className="reg-card-header">
+                <span className="reg-card-icon" aria-hidden>
+                  +
+                </span>
+                <div>
+                  <h2>Caregiver Type</h2>
+                  <p>Select whether this is a private or professional caregiver account.</p>
+                </div>
+              </header>
+
+              <label className="input-label" htmlFor="caregiver-type">
+                Type
+              </label>
+              <select
+                id="caregiver-type"
+                className="input-control"
+                name="caregiverType"
+                value={caregiverRegisterForm.caregiverType}
+                onChange={handleInputChange(setCaregiverRegisterForm)}
+              >
+                <option value="private">Private Caregiver</option>
+                <option value="professional">Professional Caregiver</option>
+              </select>
+
+              {caregiverRegisterForm.caregiverType === "professional" ? (
+                <>
+                  <div className="reg-input-row reg-input-row--spaced">
+                    <label className="reg-input-wrap" htmlFor="caregiver-region">
+                      <span className="reg-input-icon" aria-hidden>
+                        R
+                      </span>
+                      <input
+                        id="caregiver-region"
+                        className="reg-input"
+                        name="region"
+                        type="text"
+                        placeholder="Region"
+                        value={caregiverRegisterForm.region}
+                        onChange={handleInputChange(setCaregiverRegisterForm)}
+                        required
+                      />
+                    </label>
+
+                    <label className="reg-input-wrap" htmlFor="caregiver-hospital">
+                      <span className="reg-input-icon" aria-hidden>
+                        H
+                      </span>
+                      <input
+                        id="caregiver-hospital"
+                        className="reg-input"
+                        name="hospital"
+                        type="text"
+                        placeholder="Hospital / Clinic"
+                        value={caregiverRegisterForm.hospital}
+                        onChange={handleInputChange(setCaregiverRegisterForm)}
+                        required
+                      />
+                    </label>
+                  </div>
+
+                  <label className="reg-input-wrap reg-input-wrap--full" htmlFor="caregiver-title">
+                    <span className="reg-input-icon" aria-hidden>
+                      T
+                    </span>
+                    <input
+                      id="caregiver-title"
+                      className="reg-input"
+                      name="title"
+                      type="text"
+                      placeholder="Title / Profession"
+                      value={caregiverRegisterForm.title}
+                      onChange={handleInputChange(setCaregiverRegisterForm)}
+                      required
+                    />
+                  </label>
+                </>
+              ) : (
+                <p className="reg-helper-text caregiver-type-note">
+                  Private caregivers can connect later through an invitation or approved patient access.
+                </p>
+              )}
+            </article>
+
+            {errorMessage ? <p className="auth-error">{errorMessage}</p> : null}
+
+            <footer className="reg-footer">
+              <button className="btn-primary reg-continue-btn" type="submit" disabled={isLoading}>
+                {isLoading ? "Creating account..." : "Create Caregiver Account"}
+              </button>
+              <p className="reg-login-copy">
+                Already have an account?{" "}
+                <button
+                  className="reg-login-link"
+                  type="button"
+                  onClick={() => navigate("/caregiver/login")}
+                >
+                  Log In
+                </button>
+              </p>
+            </footer>
+          </form>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="login-page">
       <section className="auth-shell">
@@ -482,109 +756,54 @@ export default function LoginView({ theme = "system", setTheme }) {
 
           {errorMessage ? <p className="auth-error">{errorMessage}</p> : null}
 
-          {screen === "login" ? (
-            <form className="auth-form" onSubmit={submitLogin}>
-              <label className="input-label" htmlFor="email">
-                Email
-              </label>
-              <input
-                id="email"
-                className="input-control"
-                name="email"
-                type="email"
-                autoComplete="email"
-                placeholder="you@example.com"
-                value={loginForm.email}
-                onChange={handleInputChange(setLoginForm)}
-                required
-              />
+          <form className="auth-form" onSubmit={submitLogin}>
+            <label className="input-label" htmlFor="email">
+              Email
+            </label>
+            <input
+              id="email"
+              className="input-control"
+              name="email"
+              type="email"
+              autoComplete="email"
+              placeholder="you@example.com"
+              value={loginForm.email}
+              onChange={handleInputChange(setLoginForm)}
+              required
+            />
 
-              <label className="input-label" htmlFor="password">
-                Password
-              </label>
-              <input
-                id="password"
-                className="input-control"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                placeholder="Enter your password"
-                value={loginForm.password}
-                onChange={handleInputChange(setLoginForm)}
-                required
-              />
+            <label className="input-label" htmlFor="password">
+              Password
+            </label>
+            <input
+              id="password"
+              className="input-control"
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              placeholder="Enter your password"
+              value={loginForm.password}
+              onChange={handleInputChange(setLoginForm)}
+              required
+            />
 
-              <button className="btn-primary auth-submit" type="submit" disabled={isLoading}>
-                {isLoading ? "Signing in..." : "Log In"}
-              </button>
-            </form>
-          ) : (
-            <form className="auth-form" onSubmit={submitRegister}>
-              <label className="input-label" htmlFor="name">
-                Full Name
-              </label>
-              <input
-                id="name"
-                className="input-control"
-                name="name"
-                type="text"
-                autoComplete="name"
-                placeholder="Jane Doe"
-                value={registerForm.name}
-                onChange={handleInputChange(setRegisterForm)}
-                required
-              />
+            <button className="btn-primary auth-submit" type="submit" disabled={isLoading}>
+              {isLoading ? "Signing in..." : screen === "caregiver-login" ? "Caregiver Login" : "Log In"}
+            </button>
 
-              <label className="input-label" htmlFor="register-email">
-                Email
-              </label>
-              <input
-                id="register-email"
-                className="input-control"
-                name="email"
-                type="email"
-                autoComplete="email"
-                placeholder="you@example.com"
-                value={registerForm.email}
-                onChange={handleInputChange(setRegisterForm)}
-                required
-              />
-
-              <label className="input-label" htmlFor="register-password">
-                Password
-              </label>
-              <input
-                id="register-password"
-                className="input-control"
-                name="password"
-                type="password"
-                autoComplete="new-password"
-                placeholder="Create a password"
-                value={registerForm.password}
-                onChange={handleInputChange(setRegisterForm)}
-                required
-              />
-
-              <label className="input-label" htmlFor="role">
-                Role
-              </label>
-              <select
-                id="role"
-                className="input-control"
-                name="role"
-                value={registerForm.role}
-                onChange={handleInputChange(setRegisterForm)}
+            <p className="reg-login-copy">
+              {screen === "caregiver-login" ? "No caregiver account yet?" : "Need an account?"}{" "}
+              <button
+                className="reg-login-link"
+                type="button"
+                onClick={() =>
+                  navigate(screen === "caregiver-login" ? "/caregiver/signup" : "/create-account")
+                }
               >
-                <option value="patient">Patient</option>
-                <option value="caregiver">Caregiver</option>
-                <option value="family">Family Member</option>
-              </select>
-
-              <button className="btn-primary auth-submit" type="submit" disabled={isLoading}>
-                {isLoading ? "Creating account..." : "Create Account"}
+                {screen === "caregiver-login" ? "Create Caregiver Account" : "Create Account"}
               </button>
-            </form>
-          )}
+            </p>
+          </form>
         </article>
       </section>
     </main>
