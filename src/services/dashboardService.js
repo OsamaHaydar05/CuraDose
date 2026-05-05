@@ -2,6 +2,7 @@ import { toDatabaseError } from "./databaseErrors";
 import { supabase } from "./supabaseConfig";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const DUE_GRACE_MS = MS_PER_DAY;
 
 function startOfDay(date) {
   const value = new Date(date);
@@ -40,6 +41,72 @@ function formatDoseTime(value) {
   }
 
   return `${doseDate.toLocaleDateString([], { month: "short", day: "numeric" })}, ${time}`;
+}
+
+function formatDosage(value) {
+  const dosage = value?.trim();
+
+  if (!dosage) return "";
+
+  return /^\d+(\.\d+)?$/.test(dosage) ? `${dosage} mg` : dosage;
+}
+
+function doseTextForMedication(medication) {
+  return [formatDosage(medication.dosage), medication.instructions].filter(Boolean).join(" - ");
+}
+
+function isDoseDue(value, now = new Date()) {
+  if (!value) return false;
+
+  const scheduledAt = new Date(value).getTime();
+
+  if (!Number.isFinite(scheduledAt)) return false;
+
+  return scheduledAt <= now.getTime() && now.getTime() - scheduledAt <= DUE_GRACE_MS;
+}
+
+function nextDailyDoseAfter(value, after = new Date()) {
+  const base = value ? new Date(value) : new Date(after);
+
+  if (Number.isNaN(base.getTime())) {
+    return null;
+  }
+
+  const nextDose = new Date(base);
+
+  do {
+    nextDose.setDate(nextDose.getDate() + 1);
+  } while (nextDose <= after);
+
+  return nextDose.toISOString();
+}
+
+function nextDoseAtForScheduleTime(scheduleTime) {
+  if (!scheduleTime) return null;
+
+  const [hours, minutes] = scheduleTime.split(":").map(Number);
+
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    return null;
+  }
+
+  const doseAt = new Date();
+  doseAt.setHours(hours, minutes, 0, 0);
+  return doseAt.toISOString();
+}
+
+function scheduledAtForMedication(medication, { now = new Date(), takenToday = false } = {}) {
+  const scheduledAt = medication?.next_dose_at || nextDoseAtForScheduleTime(medication?.schedule_time);
+
+  if (!scheduledAt || !takenToday) {
+    return scheduledAt;
+  }
+
+  if (startOfDay(scheduledAt).getTime() === startOfDay(now).getTime()) {
+    return nextDailyDoseAfter(scheduledAt, now);
+  }
+
+  return scheduledAt;
 }
 
 function displayNameForUser(user, profile) {
@@ -138,14 +205,25 @@ function buildDashboardData({ user, profile, healthGoals, medications, doseLogs,
     return scheduled >= todayStart && scheduled <= todayEnd;
   });
   const completedToday = todayLogs.filter((log) => log.status === "taken" || log.taken_at).length;
+  const completedMedicationIdsToday = new Set(
+    todayLogs
+      .filter((log) => log.status === "taken" || log.taken_at)
+      .map((log) => log.medication_id)
+  );
   const upcomingLog = todayLogs
     .filter((log) => !(log.status === "taken" || log.taken_at))
     .sort((a, b) => new Date(a.scheduled_for) - new Date(b.scheduled_for))[0];
+  const scheduledAt = (medication) =>
+    scheduledAtForMedication(medication, {
+      now,
+      takenToday: completedMedicationIdsToday.has(medication?.id),
+    });
   const upcomingMedication =
     medications
-      .filter((medication) => medication.next_dose_at && new Date(medication.next_dose_at) >= now)
-      .sort((a, b) => new Date(a.next_dose_at) - new Date(b.next_dose_at))[0] || medications[0];
+      .filter((medication) => scheduledAt(medication))
+      .sort((a, b) => new Date(scheduledAt(a)) - new Date(scheduledAt(b)))[0] || medications[0];
   const nextMedication = upcomingLog ? medicationsById[upcomingLog.medication_id] : upcomingMedication;
+  const nextDoseAt = upcomingLog?.scheduled_for || scheduledAt(nextMedication);
   const weeklyProgress = buildWeek(doseLogs, weekStart);
   const scheduledDays = weeklyProgress.filter((item) => item.total > 0);
   const weeklyScore = scheduledDays.length
@@ -177,8 +255,10 @@ function buildDashboardData({ user, profile, healthGoals, medications, doseLogs,
           doseLogId: upcomingLog?.id || null,
           medicationId: nextMedication.id,
           medicationName: nextMedication.name,
-          doseText: [nextMedication.dosage, nextMedication.instructions].filter(Boolean).join(" - "),
-          timeText: formatDoseTime(upcomingLog?.scheduled_for || nextMedication.next_dose_at),
+          doseText: doseTextForMedication(nextMedication),
+          timeText: formatDoseTime(nextDoseAt),
+          scheduledFor: nextDoseAt,
+          canTakeDose: isDoseDue(nextDoseAt, now),
           remainingPills: nextMedication.remaining_pills,
         }
       : {
@@ -187,6 +267,8 @@ function buildDashboardData({ user, profile, healthGoals, medications, doseLogs,
           medicationName: "No medication scheduled",
           doseText: "Add medication to sync doses",
           timeText: "No upcoming dose",
+          scheduledFor: null,
+          canTakeDose: false,
           remainingPills: null,
         },
     overviewCards: [
@@ -203,7 +285,7 @@ function buildDashboardData({ user, profile, healthGoals, medications, doseLogs,
         icon: "bottle",
         title: "Remaining Pills",
         value: `${totalPills} Pills`,
-        detail: lowInventory ? `Lowest: ${lowInventory.name}` : "Add inventory",
+        detail: lowInventory ? lowInventory.name : "Add inventory",
       },
       {
         id: "caregiver",
@@ -216,10 +298,10 @@ function buildDashboardData({ user, profile, healthGoals, medications, doseLogs,
     weeklyProgress,
     weeklyScore,
     deviceStatus: {
-      title: "Smart Dispenser",
+      title: "CuraDose Lock Box",
       subtitle: deviceSlots?.length
-        ? "Live slot data from the dispenser"
-        : "Software ready for the two-box hardware",
+        ? "Live lock-box slot data"
+        : "Software ready for the locking medication box",
       slots: buildDeviceSlots(deviceSlots, medications),
     },
     healthTip: healthTipForGoals(healthGoals),
@@ -238,7 +320,7 @@ function fallbackDeviceSlots(medications) {
       label: `Box ${slotNumber}`,
       medicationName: medication?.name || "Unassigned",
       pillCount: medication?.remaining_pills ?? 0,
-      dispenserStatusText: "Not connected",
+      boxStatusText: "Not connected",
       status: medication ? "setup_needed" : "unassigned",
       statusLabel: medication ? "Hardware setup needed" : "Assign medication",
       syncText: "No device sync yet",
@@ -272,7 +354,7 @@ function statusLabel(status) {
   return "Unknown";
 }
 
-function dispenserStatusText(status, pillCount) {
+function boxStatusText(status, pillCount) {
   if (status === "empty") return "Needs refill";
   if (status === "low") return "Low supply";
   if (status === "ready" && pillCount > 0) return "Ready";
@@ -295,7 +377,7 @@ function buildDeviceSlots(deviceSlots, medications) {
         label: `Box ${slotNumber}`,
         medicationName: "Unassigned",
         pillCount: 0,
-        dispenserStatusText: "Not configured",
+        boxStatusText: "Not configured",
         status: "unassigned",
         statusLabel: "Assign medication",
         syncText: "No slot configured",
@@ -311,7 +393,7 @@ function buildDeviceSlots(deviceSlots, medications) {
       pillCount: slot.current_pill_count ?? 0,
       status: slot.status || "setup_needed",
       statusLabel: statusLabel(slot.status),
-      dispenserStatusText: dispenserStatusText(slot.status, slot.current_pill_count ?? 0),
+      boxStatusText: boxStatusText(slot.status, slot.current_pill_count ?? 0),
       syncText: formatRelativeTime(slot.last_event_at),
       source: "device",
     };
@@ -345,7 +427,7 @@ export async function getDashboardData() {
     supabase.from("health_goals").select("routine_rating,goals,confidence").eq("user_id", user.id).maybeSingle(),
     supabase
       .from("medications")
-      .select("id,name,dosage,instructions,remaining_pills,refill_threshold,next_dose_at")
+      .select("id,name,dosage,instructions,schedule_time,remaining_pills,refill_threshold,next_dose_at")
       .eq("user_id", user.id)
       .eq("active", true)
       .order("next_dose_at", { ascending: true, nullsFirst: false }),
@@ -392,7 +474,7 @@ export async function getDashboardData() {
   });
 }
 
-export async function markDoseTaken({ doseLogId, medicationId }) {
+export async function markDoseTaken({ doseLogId, medicationId, scheduledFor }) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
 
   if (sessionError) {
@@ -410,23 +492,50 @@ export async function markDoseTaken({ doseLogId, medicationId }) {
   }
 
   if (doseLogId) {
-    const { error } = await supabase
+    const { data: doseLog, error } = await supabase
       .from("dose_logs")
       .update({
         status: "taken",
         taken_at: new Date().toISOString(),
       })
       .eq("id", doseLogId)
-      .eq("user_id", user.id);
+      .eq("user_id", user.id)
+      .eq("status", "scheduled")
+      .lte("scheduled_for", new Date().toISOString())
+      .select("scheduled_for")
+      .maybeSingle();
 
     if (error) {
       throw toDatabaseError(error);
     }
+
+    if (!doseLog) {
+      throw new Error("This dose is not due or has already been taken.");
+    }
+
+    scheduledFor = doseLog.scheduled_for;
   } else {
+    const { data: medicationSchedule, error: scheduleError } = await supabase
+      .from("medications")
+      .select("next_dose_at,schedule_time")
+      .eq("id", medicationId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (scheduleError) {
+      throw toDatabaseError(scheduleError);
+    }
+
+    const doseTime = scheduledFor || scheduledAtForMedication(medicationSchedule);
+
+    if (!isDoseDue(doseTime)) {
+      throw new Error("This dose is not due yet.");
+    }
+
     const { error } = await supabase.from("dose_logs").insert({
       user_id: user.id,
       medication_id: medicationId,
-      scheduled_for: new Date().toISOString(),
+      scheduled_for: doseTime,
       status: "taken",
       taken_at: new Date().toISOString(),
     });
@@ -434,6 +543,8 @@ export async function markDoseTaken({ doseLogId, medicationId }) {
     if (error) {
       throw toDatabaseError(error);
     }
+
+    scheduledFor = doseTime;
   }
 
   const { data: medication, error: medicationError } = await supabase
@@ -452,6 +563,7 @@ export async function markDoseTaken({ doseLogId, medicationId }) {
       .from("medications")
       .update({
         remaining_pills: Math.max(0, medication.remaining_pills - 1),
+        next_dose_at: nextDailyDoseAfter(scheduledFor),
         updated_at: new Date().toISOString(),
       })
       .eq("id", medicationId)

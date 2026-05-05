@@ -4,6 +4,7 @@ import { supabase } from "./supabaseConfig";
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const MAX_TIMER_DELAY = 2_147_483_647;
 const REMINDER_HORIZON_DAYS = 7;
+const REMINDER_GRACE_MS = MS_PER_DAY;
 const ENABLED_KEY = "curadose-dose-notifications-enabled";
 const DELIVERED_KEY_PREFIX = "curadose-dose-notifications-delivered";
 
@@ -69,8 +70,16 @@ function formatDoseTime(value) {
   });
 }
 
+function formatDosage(value) {
+  const dosage = value?.trim();
+
+  if (!dosage) return "";
+
+  return /^\d+(\.\d+)?$/.test(dosage) ? `${dosage} mg` : dosage;
+}
+
 function formatReminderBody(reminder) {
-  const details = [reminder.dosage, reminder.instructions].filter(Boolean).join(" - ");
+  const details = [formatDosage(reminder.dosage), reminder.instructions].filter(Boolean).join(" - ");
   return details || "Open CuraDose to mark this dose as taken.";
 }
 
@@ -88,26 +97,79 @@ function reminderFromDoseLog(log) {
   };
 }
 
-function reminderFromMedication(medication) {
+function startOfDay(date) {
+  const value = new Date(date);
+  value.setHours(0, 0, 0, 0);
+  return value;
+}
+
+function nextDailyDoseAfter(value, after = new Date()) {
+  const base = value ? new Date(value) : new Date(after);
+
+  if (Number.isNaN(base.getTime())) {
+    return null;
+  }
+
+  const nextDose = new Date(base);
+
+  do {
+    nextDose.setDate(nextDose.getDate() + 1);
+  } while (nextDose <= after);
+
+  return nextDose.toISOString();
+}
+
+function scheduledAtForMedication(medication, { now = new Date(), takenToday = false } = {}) {
+  const scheduledAt = medication?.next_dose_at || nextDoseAtForScheduleTime(medication?.schedule_time);
+
+  if (!scheduledAt || !takenToday) {
+    return scheduledAt;
+  }
+
+  if (startOfDay(scheduledAt).getTime() === startOfDay(now).getTime()) {
+    return nextDailyDoseAfter(scheduledAt, now);
+  }
+
+  return scheduledAt;
+}
+
+function reminderFromMedication(medication, options) {
+  const scheduledFor = scheduledAtForMedication(medication, options);
+
   return {
-    id: `medication-${medication.id}-${new Date(medication.next_dose_at).getTime()}`,
+    id: `medication-${medication.id}-${new Date(scheduledFor).getTime()}`,
     medicationId: medication.id,
     medicationName: medication.name || "your medication",
     dosage: medication.dosage || "",
     instructions: medication.instructions || "",
-    scheduledFor: medication.next_dose_at,
+    scheduledFor,
     source: "medication",
   };
 }
 
-function uniqueFutureReminders(reminders) {
+function nextDoseAtForScheduleTime(scheduleTime) {
+  if (!scheduleTime) return null;
+
+  const [hours, minutes] = scheduleTime.split(":").map(Number);
+
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    return null;
+  }
+
+  const doseAt = new Date();
+  doseAt.setHours(hours, minutes, 0, 0);
+  return doseAt.toISOString();
+}
+
+function uniqueDueAndFutureReminders(reminders) {
   const now = Date.now();
+  const graceStart = now - REMINDER_GRACE_MS;
   const seen = new Set();
 
   return reminders
     .filter((reminder) => {
       const scheduledAt = new Date(reminder.scheduledFor).getTime();
-      return Number.isFinite(scheduledAt) && scheduledAt > now;
+      return Number.isFinite(scheduledAt) && scheduledAt >= graceStart;
     })
     .sort((a, b) => new Date(a.scheduledFor) - new Date(b.scheduledFor))
     .filter((reminder) => {
@@ -237,39 +299,55 @@ export function disableDoseNotifications() {
 export async function getUpcomingDoseReminders() {
   const user = await currentUser();
   const now = new Date();
+  const graceStart = new Date(now.getTime() - REMINDER_GRACE_MS);
   const horizon = new Date(now.getTime() + REMINDER_HORIZON_DAYS * MS_PER_DAY);
+  const todayStart = startOfDay(now);
+  const todayEnd = new Date(todayStart.getTime() + MS_PER_DAY - 1);
 
-  const [doseLogsResult, medicationsResult] = await Promise.all([
+  const [doseLogsResult, medicationsResult, todayTakenLogsResult] = await Promise.all([
     supabase
       .from("dose_logs")
       .select("id,medication_id,scheduled_for,status,medications(name,dosage,instructions)")
       .eq("user_id", user.id)
       .eq("status", "scheduled")
-      .gte("scheduled_for", now.toISOString())
+      .gte("scheduled_for", graceStart.toISOString())
       .lte("scheduled_for", horizon.toISOString())
       .order("scheduled_for", { ascending: true }),
     supabase
       .from("medications")
-      .select("id,name,dosage,instructions,next_dose_at")
+      .select("id,name,dosage,instructions,schedule_time,next_dose_at")
       .eq("user_id", user.id)
       .eq("active", true)
-      .not("next_dose_at", "is", null)
-      .gte("next_dose_at", now.toISOString())
-      .lte("next_dose_at", horizon.toISOString())
       .order("next_dose_at", { ascending: true }),
+    supabase
+      .from("dose_logs")
+      .select("medication_id")
+      .eq("user_id", user.id)
+      .eq("status", "taken")
+      .gte("scheduled_for", todayStart.toISOString())
+      .lte("scheduled_for", todayEnd.toISOString()),
   ]);
 
-  const firstError = [doseLogsResult.error, medicationsResult.error].find(Boolean);
+  const firstError = [doseLogsResult.error, medicationsResult.error, todayTakenLogsResult.error].find(Boolean);
 
   if (firstError) {
     throw toDatabaseError(firstError);
   }
 
+  const completedMedicationIdsToday = new Set(
+    (todayTakenLogsResult.data || []).map((log) => log.medication_id)
+  );
+
   return {
     userId: user.id,
-    reminders: uniqueFutureReminders([
+    reminders: uniqueDueAndFutureReminders([
       ...(doseLogsResult.data || []).map(reminderFromDoseLog),
-      ...(medicationsResult.data || []).map(reminderFromMedication),
+      ...(medicationsResult.data || []).map((medication) =>
+        reminderFromMedication(medication, {
+          now,
+          takenToday: completedMedicationIdsToday.has(medication.id),
+        })
+      ),
     ]),
   };
 }
@@ -295,8 +373,8 @@ export async function scheduleDoseNotifications() {
   reminders.forEach((reminder) => {
     if (deliveredIds.has(reminder.id)) return;
 
-    const delay = new Date(reminder.scheduledFor).getTime() - Date.now();
-    if (delay < 0 || delay > MAX_TIMER_DELAY) return;
+    const delay = Math.max(0, new Date(reminder.scheduledFor).getTime() - Date.now());
+    if (delay > MAX_TIMER_DELAY) return;
 
     const timerId = window.setTimeout(async () => {
       scheduledTimers.delete(reminder.id);

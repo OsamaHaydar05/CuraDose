@@ -24,7 +24,7 @@ const fallbackWeeklyProgress = [
 const quickActions = [
   { id: "medications", icon: "capsule", label: "Medication Schedule", path: "/medications" },
   { id: "inventory", icon: "bottle", label: "Inventory" },
-  { id: "device", icon: "scale", label: "Dispenser" },
+  { id: "device", icon: "scale", label: "Lock Box" },
   { id: "reminders", icon: "clock", label: "Reminders" },
   { id: "caregiver", icon: "users", label: "Caregiver" },
 ];
@@ -277,6 +277,7 @@ export default function DashboardView() {
       await markDoseTaken({
         doseLogId: dashboardData.nextDose.doseLogId,
         medicationId: dashboardData.nextDose.medicationId,
+        scheduledFor: dashboardData.nextDose.scheduledFor,
       });
       await loadDashboard();
       await syncDoseNotifications();
@@ -352,8 +353,8 @@ export default function DashboardView() {
     weeklyProgress: fallbackWeeklyProgress,
     weeklyScore: 0,
     deviceStatus: {
-      title: "Smart Dispenser",
-      subtitle: "Software ready for the two-box hardware",
+      title: "CuraDose Lock Box",
+      subtitle: "Software ready for the locking medication box",
       slots: [
         {
           id: "loading-slot-1",
@@ -361,7 +362,7 @@ export default function DashboardView() {
           label: "Box 1",
           medicationName: "Loading",
           pillCount: 0,
-          dispenserStatusText: "Not connected",
+          boxStatusText: "Not connected",
           status: "setup_needed",
           statusLabel: "Setup needed",
           syncText: "No device sync yet",
@@ -372,7 +373,7 @@ export default function DashboardView() {
           label: "Box 2",
           medicationName: "Loading",
           pillCount: 0,
-          dispenserStatusText: "Not connected",
+          boxStatusText: "Not connected",
           status: "setup_needed",
           statusLabel: "Setup needed",
           syncText: "No device sync yet",
@@ -451,9 +452,9 @@ export default function DashboardView() {
             <button
               type="button"
               onClick={handleTakeDose}
-              disabled={isLoading || isTakingDose || !data.nextDose.medicationId}
+              disabled={isLoading || isTakingDose || !data.nextDose.medicationId || !data.nextDose.canTakeDose}
             >
-              {isTakingDose ? "Saving..." : "Take Dose"}
+              {isTakingDose ? "Saving..." : data.nextDose.canTakeDose ? "Take Dose" : "Not due yet"}
             </button>
           </div>
         </section>
@@ -545,8 +546,8 @@ export default function DashboardView() {
                     <strong>{slot.pillCount}</strong>
                   </div>
                   <div>
-                    <span>Dispenser</span>
-                    <strong>{slot.dispenserStatusText}</strong>
+                    <span>Box</span>
+                    <strong>{slot.boxStatusText}</strong>
                   </div>
                 </div>
                 <p>{slot.syncText}</p>

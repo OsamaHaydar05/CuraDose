@@ -4,6 +4,20 @@ import { supabase } from "./supabaseConfig";
 const MEDICATION_COLUMNS =
   "id,name,dosage,instructions,frequency,schedule_time,remaining_pills,refill_threshold,next_dose_at,active";
 
+function nextDoseAtForSchedule(scheduleTime) {
+  if (!scheduleTime) return null;
+
+  const [hours, minutes] = scheduleTime.split(":").map(Number);
+
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    return null;
+  }
+
+  const nextDose = new Date();
+  nextDose.setHours(hours, minutes, 0, 0);
+  return nextDose.toISOString();
+}
+
 async function requireSessionUser() {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
 
@@ -97,6 +111,7 @@ function buildMedicationPayload({ name, dosage, frequency, scheduleTime, instruc
     dosage: dosage?.trim() || null,
     frequency: frequency?.trim() || null,
     schedule_time: scheduleTime || null,
+    next_dose_at: nextDoseAtForSchedule(scheduleTime),
     instructions: instructions?.trim() || null,
     ...(typeof remainingPills === "number" ? { remaining_pills: remainingPills } : {}),
     updated_at: new Date().toISOString(),
