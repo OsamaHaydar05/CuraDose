@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getDashboardData, markDoseTaken } from "../services/dashboardService";
 import { signOut } from "../services/authService";
+import { supabase } from "../services/supabaseConfig";
 import {
   clearDoseNotificationTimers,
   disableDoseNotifications,
@@ -35,6 +36,24 @@ const navItems = [
   { id: "caregiver", icon: "users", label: "Caregiver" },
   { id: "settings", icon: "gear", label: "Settings" },
 ];
+
+const DISMISSED_MISSED_DOSE_ALERT_KEY = "curadose-dismissed-missed-dose-alert";
+
+function readDismissedMissedDoseAlertId() {
+  try {
+    return window.localStorage.getItem(DISMISSED_MISSED_DOSE_ALERT_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function saveDismissedMissedDoseAlertId(alertId) {
+  try {
+    window.localStorage.setItem(DISMISSED_MISSED_DOSE_ALERT_KEY, alertId);
+  } catch {
+    // Dismissal is only a convenience; the alert still works without storage.
+  }
+}
 
 function DashboardIcon({ name }) {
   const commonProps = {
@@ -91,6 +110,16 @@ function DashboardIcon({ name }) {
     return (
       <svg {...commonProps}>
         <path d="M20.4 5.8a5 5 0 0 0-7.1 0L12 7.1l-1.3-1.3a5 5 0 1 0-7.1 7.1l8.4 8.4 8.4-8.4a5 5 0 0 0 0-7.1Z" />
+      </svg>
+    );
+  }
+
+  if (name === "warning") {
+    return (
+      <svg {...commonProps}>
+        <path d="M12 4 3.5 19h17L12 4Z" />
+        <path d="M12 9v4" />
+        <path d="M12 16h.01" />
       </svg>
     );
   }
@@ -217,6 +246,7 @@ export default function DashboardView() {
   const [isUpdatingNotifications, setIsUpdatingNotifications] = useState(false);
   const [notificationState, setNotificationState] = useState(() => getDoseNotificationState());
   const [notificationMessage, setNotificationMessage] = useState("");
+  const [dismissedMissedDoseAlertId, setDismissedMissedDoseAlertId] = useState(readDismissedMissedDoseAlertId);
 
   const syncDoseNotifications = async () => {
     const currentState = getDoseNotificationState();
@@ -256,13 +286,34 @@ export default function DashboardView() {
   };
 
   useEffect(() => {
+    let isMounted = true;
+    let refreshTimer = null;
+
+    const refreshDashboard = () => {
+      if (!isMounted) return;
+      window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => {
+        loadDashboard();
+      }, 250);
+    };
+
     loadDashboard();
     syncDoseNotifications();
 
     const reminderSync = window.setInterval(syncDoseNotifications, 60 * 1000);
+    const dashboardSync = window.setInterval(loadDashboard, 10 * 1000);
+    const dashboardChannel = supabase
+      .channel("dashboard-live-sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "device_slots" }, refreshDashboard)
+      .on("postgres_changes", { event: "*", schema: "public", table: "dose_logs" }, refreshDashboard)
+      .subscribe();
 
     return () => {
+      isMounted = false;
+      window.clearTimeout(refreshTimer);
       window.clearInterval(reminderSync);
+      window.clearInterval(dashboardSync);
+      supabase.removeChannel(dashboardChannel);
       clearDoseNotificationTimers();
     };
   }, []);
@@ -350,6 +401,7 @@ export default function DashboardView() {
       medicationId: null,
     },
     overviewCards: [],
+    missedDoseAlert: null,
     weeklyProgress: fallbackWeeklyProgress,
     weeklyScore: 0,
     deviceStatus: {
@@ -385,6 +437,17 @@ export default function DashboardView() {
       headline: "Drink water with your medication",
       body: "It helps your body absorb it better.",
     },
+  };
+  const visibleMissedDoseAlert =
+    data.missedDoseAlert && data.missedDoseAlert.id !== dismissedMissedDoseAlertId
+      ? data.missedDoseAlert
+      : null;
+
+  const handleDismissMissedDoseAlert = () => {
+    if (!visibleMissedDoseAlert?.id) return;
+
+    saveDismissedMissedDoseAlertId(visibleMissedDoseAlert.id);
+    setDismissedMissedDoseAlertId(visibleMissedDoseAlert.id);
   };
 
   return (
@@ -433,6 +496,22 @@ export default function DashboardView() {
             <strong>{data.streakDays} Days</strong>
           </article>
         </section>
+
+        {visibleMissedDoseAlert ? (
+          <section className="dashboard-missed-alert" role="alert" aria-label="Missed dose alert">
+            <span className="dashboard-missed-alert-icon">
+              <DashboardIcon name="warning" />
+            </span>
+            <div>
+              <h2>{visibleMissedDoseAlert.title}</h2>
+              <p>{visibleMissedDoseAlert.message}</p>
+              <strong>{visibleMissedDoseAlert.details}</strong>
+            </div>
+            <button type="button" onClick={handleDismissMissedDoseAlert} aria-label="Clear missed dose alert">
+              Clear
+            </button>
+          </section>
+        ) : null}
 
         <section className="dashboard-dose-card" aria-label="Next dose">
           <div className="dashboard-dose-copy">
@@ -529,7 +608,7 @@ export default function DashboardView() {
             </div>
             <span className="dashboard-device-sync">
               <DashboardIcon name="signal" />
-              Future Pi sync
+              Pi sync
             </span>
           </div>
           <div className="dashboard-device-grid">

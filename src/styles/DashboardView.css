@@ -335,6 +335,81 @@ button.dashboard-nav-card:hover {
   line-height: 1.35;
 }
 
+.dashboard-missed-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 18px 0 0;
+  padding: 14px 16px;
+  border: 1px solid #f3b4bf;
+  border-radius: 16px;
+  background: #fff0f3;
+  color: #7f1d2d;
+  box-shadow: 0 14px 32px rgba(127, 29, 45, 0.1);
+}
+
+.dashboard-missed-alert-icon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: var(--radius-pill);
+  background: #ffd8df;
+  color: #b4233c;
+}
+
+.dashboard-missed-alert-icon .dashboard-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.dashboard-missed-alert > div {
+  min-width: 0;
+}
+
+.dashboard-missed-alert h2 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+  color: #7f1d2d;
+}
+
+.dashboard-missed-alert p,
+.dashboard-missed-alert strong {
+  margin: 0;
+  line-height: 1.35;
+}
+
+.dashboard-missed-alert p {
+  color: #9f2740;
+}
+
+.dashboard-missed-alert strong {
+  display: block;
+  margin-top: 4px;
+  color: #7f1d2d;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.dashboard-missed-alert button {
+  flex: 0 0 auto;
+  margin-left: auto;
+  border: 0;
+  border-radius: var(--radius-pill);
+  padding: 8px 12px;
+  background: #ffd8df;
+  color: #7f1d2d;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.dashboard-missed-alert button:hover {
+  background: #ffc4ce;
+}
+
 .dashboard-pill-art {
   position: relative;
   width: 116px;
@@ -847,6 +922,32 @@ button.dashboard-nav-card:hover {
 [data-theme="dark"] .dashboard-device-metrics div,
 [data-theme="dark"] .dashboard-progress-track {
   background: #102b45;
+}
+
+[data-theme="dark"] .dashboard-missed-alert {
+  border-color: #7f1d2d;
+  background: #31121b;
+  color: #ffd8df;
+}
+
+[data-theme="dark"] .dashboard-missed-alert-icon {
+  background: #4b1724;
+  color: #ff9daf;
+}
+
+[data-theme="dark"] .dashboard-missed-alert h2,
+[data-theme="dark"] .dashboard-missed-alert p,
+[data-theme="dark"] .dashboard-missed-alert strong {
+  color: #ffd8df;
+}
+
+[data-theme="dark"] .dashboard-missed-alert button {
+  background: #4b1724;
+  color: #ffd8df;
+}
+
+[data-theme="dark"] .dashboard-missed-alert button:hover {
+  background: #652034;
 }
 
 [data-theme="dark"] .dashboard-bottom-nav {

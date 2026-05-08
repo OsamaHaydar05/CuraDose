@@ -3,6 +3,7 @@ import { supabase } from "./supabaseConfig";
 
 const MEDICATION_COLUMNS =
   "id,name,dosage,instructions,frequency,schedule_time,remaining_pills,refill_threshold,next_dose_at,active";
+const MAX_ACTIVE_MEDICATIONS = 2;
 
 function nextDoseAtForSchedule(scheduleTime) {
   if (!scheduleTime) return null;
@@ -129,6 +130,20 @@ export async function createMedication(input) {
 
   if (!payload.name) {
     throw new Error("Medication name is required.");
+  }
+
+  const { count, error: countError } = await supabase
+    .from("medications")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .eq("active", true);
+
+  if (countError) {
+    throw toDatabaseError(countError);
+  }
+
+  if ((count || 0) >= MAX_ACTIVE_MEDICATIONS) {
+    throw new Error("CuraDose has two compartments. Remove a medication before adding another.");
   }
 
   const { data, error } = await supabase

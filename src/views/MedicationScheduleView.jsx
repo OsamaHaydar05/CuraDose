@@ -31,6 +31,8 @@ const EMPTY_DRAFT = {
   frequency: FREQUENCY_OPTIONS[0],
   instructions: "",
 };
+const MAX_SCHEDULED_MEDICATIONS = 2;
+const SCHEDULE_LIMIT_MESSAGE = "CuraDose has two compartments. Remove a medication before adding another.";
 
 function ScheduleIcon({ name }) {
   const commonProps = {
@@ -327,6 +329,11 @@ export default function MedicationScheduleView() {
       return;
     }
 
+    if (medications.length >= MAX_SCHEDULED_MEDICATIONS) {
+      setFeedback(SCHEDULE_LIMIT_MESSAGE);
+      return;
+    }
+
     setFeedback("");
     setEditorState({ open: true, draft: EMPTY_DRAFT, editingId: null });
   };
@@ -421,6 +428,7 @@ export default function MedicationScheduleView() {
 
   const isManaged = access.mode === ACCESS_MODE.MANAGED;
   const isCaregiver = access.mode === ACCESS_MODE.CAREGIVER;
+  const isAtMedicationLimit = medications.length >= MAX_SCHEDULED_MEDICATIONS;
 
   return (
     <main className="dashboard-page">
@@ -444,7 +452,8 @@ export default function MedicationScheduleView() {
               className="med-add-button"
               onClick={handleOpenAdd}
               aria-label="Add medication"
-              title="Add medication"
+              title={isAtMedicationLimit ? SCHEDULE_LIMIT_MESSAGE : "Add medication"}
+              disabled={isAtMedicationLimit}
             >
               <ScheduleIcon name="plus" />
               <span>Add</span>
@@ -484,6 +493,17 @@ export default function MedicationScheduleView() {
 
         {error ? <p className="dashboard-error" role="alert">{error}</p> : null}
         {feedback ? <p className="med-feedback" role="status">{feedback}</p> : null}
+        {!isLoading && access.canWrite && isAtMedicationLimit ? (
+          <section className="med-banner med-banner--limit" role="status">
+            <span className="med-banner-icon" aria-hidden>
+              <ScheduleIcon name="capsule" />
+            </span>
+            <div>
+              <strong>Two compartments in use</strong>
+              <p>Only two medications can be scheduled at a time because the lock box has two compartments.</p>
+            </div>
+          </section>
+        ) : null}
 
         <section className="med-list-section" aria-label="Medications">
           {isLoading ? (

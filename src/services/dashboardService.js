@@ -55,6 +55,31 @@ function doseTextForMedication(medication) {
   return [formatDosage(medication.dosage), medication.instructions].filter(Boolean).join(" - ");
 }
 
+function missedDoseSummary(logs, medicationsById) {
+  if (!logs.length) return null;
+
+  const sortedLogs = [...logs].sort((a, b) => new Date(b.scheduled_for) - new Date(a.scheduled_for));
+  const alertId = sortedLogs
+    .map((log) => log.id || `${log.medication_id}:${log.scheduled_for}`)
+    .sort()
+    .join("|");
+  const details = sortedLogs.slice(0, 2).map((log) => {
+    const medicationName = medicationsById[log.medication_id]?.name || "Medication";
+    return `${medicationName} at ${formatDoseTime(log.scheduled_for)}`;
+  });
+
+  return {
+    id: alertId,
+    count: logs.length,
+    title: logs.length === 1 ? "Missed dose" : "Missed doses",
+    message:
+      logs.length === 1
+        ? "You missed one scheduled dose today."
+        : `You missed ${logs.length} scheduled doses today.`,
+    details: details.join(" | "),
+  };
+}
+
 function isDoseDue(value, now = new Date()) {
   if (!value) return false;
 
@@ -205,13 +230,14 @@ function buildDashboardData({ user, profile, healthGoals, medications, doseLogs,
     return scheduled >= todayStart && scheduled <= todayEnd;
   });
   const completedToday = todayLogs.filter((log) => log.status === "taken" || log.taken_at).length;
+  const missedTodayLogs = todayLogs.filter((log) => log.status === "missed" && !log.taken_at);
   const completedMedicationIdsToday = new Set(
     todayLogs
       .filter((log) => log.status === "taken" || log.taken_at)
       .map((log) => log.medication_id)
   );
   const upcomingLog = todayLogs
-    .filter((log) => !(log.status === "taken" || log.taken_at))
+    .filter((log) => !(log.status === "taken" || log.status === "missed" || log.taken_at))
     .sort((a, b) => new Date(a.scheduled_for) - new Date(b.scheduled_for))[0];
   const scheduledAt = (medication) =>
     scheduledAtForMedication(medication, {
@@ -229,10 +255,11 @@ function buildDashboardData({ user, profile, healthGoals, medications, doseLogs,
   const weeklyScore = scheduledDays.length
     ? Math.round(scheduledDays.reduce((sum, item) => sum + item.value, 0) / scheduledDays.length)
     : 0;
-  const totalPills = medications.reduce((sum, medication) => sum + (medication.remaining_pills || 0), 0);
-  const lowInventory = medications
-    .filter((medication) => typeof medication.remaining_pills === "number")
-    .sort((a, b) => a.remaining_pills - b.remaining_pills)[0];
+  const lockBoxSlots = buildDeviceSlots(deviceSlots, medications);
+  const liveSlotTotal = lockBoxSlots.reduce((sum, slot) => sum + (slot.pillCount || 0), 0);
+  const liveSlotDetail = lockBoxSlots
+    .map((slot) => `${slot.label}: ${slot.pillCount}`)
+    .join(" | ");
   const acceptedInvite = caregiverInvites.find((invite) => invite.status === "accepted");
   const latestInvite = caregiverInvites[0];
   const caregiverStatus = acceptedInvite
@@ -250,6 +277,7 @@ function buildDashboardData({ user, profile, healthGoals, medications, doseLogs,
       avatarInitial: name.trim().charAt(0).toUpperCase() || "C",
     },
     streakDays: calculateStreak(doseLogs),
+    missedDoseAlert: missedDoseSummary(missedTodayLogs, medicationsById),
     nextDose: nextMedication
       ? {
           doseLogId: upcomingLog?.id || null,
@@ -284,8 +312,8 @@ function buildDashboardData({ user, profile, healthGoals, medications, doseLogs,
         id: "inventory",
         icon: "bottle",
         title: "Remaining Pills",
-        value: `${totalPills} Pills`,
-        detail: lowInventory ? lowInventory.name : "Add inventory",
+        value: `${liveSlotTotal} Pills`,
+        detail: liveSlotDetail || "No slot data",
       },
       {
         id: "caregiver",
@@ -302,7 +330,7 @@ function buildDashboardData({ user, profile, healthGoals, medications, doseLogs,
       subtitle: deviceSlots?.length
         ? "Live lock-box slot data"
         : "Software ready for the locking medication box",
-      slots: buildDeviceSlots(deviceSlots, medications),
+      slots: lockBoxSlots,
     },
     healthTip: healthTipForGoals(healthGoals),
   };
@@ -362,6 +390,15 @@ function boxStatusText(status, pillCount) {
   return "Not configured";
 }
 
+function displaySlotLabel(label, slotNumber) {
+  const fallback = `Box ${slotNumber}`;
+  const value = label?.trim();
+
+  if (!value) return fallback;
+
+  return value.replace(/^fack\s*(\d+)$/i, "Box $1");
+}
+
 function buildDeviceSlots(deviceSlots, medications) {
   if (!deviceSlots?.length) {
     return fallbackDeviceSlots(medications);
@@ -388,7 +425,7 @@ function buildDeviceSlots(deviceSlots, medications) {
     return {
       id: slot.id,
       slotNumber,
-      label: slot.label || `Box ${slotNumber}`,
+      label: displaySlotLabel(slot.label, slotNumber),
       medicationName: slot.medications?.name || "Unassigned",
       pillCount: slot.current_pill_count ?? 0,
       status: slot.status || "setup_needed",
