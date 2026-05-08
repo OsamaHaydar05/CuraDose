@@ -178,6 +178,32 @@
   gap: 18px;
 }
 
+.care-error,
+.care-empty-state,
+.care-empty-row {
+  border-radius: 14px;
+  padding: 14px;
+  line-height: 1.4;
+}
+
+.care-error {
+  margin: 0 0 18px;
+  background: #fff0f3;
+  color: #b4233c;
+}
+
+.care-empty-state,
+.care-empty-row {
+  margin: 0;
+  background: #f6f9fc;
+  color: var(--color-text-muted);
+  font-weight: 800;
+}
+
+.care-empty-row {
+  display: block !important;
+}
+
 .care-stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

@@ -146,6 +146,13 @@ drop policy if exists "Users can update their own dose logs" on public.dose_logs
 drop policy if exists "Users can delete their own dose logs" on public.dose_logs;
 drop policy if exists "Users can read their own caregiver invites" on public.caregiver_invites;
 drop policy if exists "Users can create their own caregiver invites" on public.caregiver_invites;
+drop policy if exists "Caregivers can read invites sent to their email" on public.caregiver_invites;
+drop policy if exists "Caregivers can read accepted patient profiles" on public.profiles;
+drop policy if exists "Caregivers can read accepted patient medications" on public.medications;
+drop policy if exists "Caregivers can read accepted patient dose logs" on public.dose_logs;
+drop policy if exists "Caregivers can read accepted patient devices" on public.devices;
+drop policy if exists "Caregivers can read accepted patient device slots" on public.device_slots;
+drop policy if exists "Caregivers can read accepted patient device readings" on public.device_readings;
 drop policy if exists "Users can read their own devices" on public.devices;
 drop policy if exists "Users can create their own devices" on public.devices;
 drop policy if exists "Users can update their own devices" on public.devices;
@@ -157,6 +164,18 @@ drop policy if exists "Users can read their own device readings" on public.devic
 create policy "Users can read their own profile"
   on public.profiles for select
   using (auth.uid() = id);
+
+create policy "Caregivers can read accepted patient profiles"
+  on public.profiles for select
+  using (
+    exists (
+      select 1
+      from public.caregiver_invites ci
+      where ci.patient_id = profiles.id
+        and ci.status = 'accepted'
+        and lower(ci.caregiver_email) = lower(auth.jwt() ->> 'email')
+    )
+  );
 
 create policy "Users can create their own profile"
   on public.profiles for insert
@@ -184,6 +203,18 @@ create policy "Users can read their own medications"
   on public.medications for select
   using (auth.uid() = user_id);
 
+create policy "Caregivers can read accepted patient medications"
+  on public.medications for select
+  using (
+    exists (
+      select 1
+      from public.caregiver_invites ci
+      where ci.patient_id = medications.user_id
+        and ci.status = 'accepted'
+        and lower(ci.caregiver_email) = lower(auth.jwt() ->> 'email')
+    )
+  );
+
 create policy "Users can create their own medications"
   on public.medications for insert
   with check (auth.uid() = user_id);
@@ -200,6 +231,18 @@ create policy "Users can delete their own medications"
 create policy "Users can read their own dose logs"
   on public.dose_logs for select
   using (auth.uid() = user_id);
+
+create policy "Caregivers can read accepted patient dose logs"
+  on public.dose_logs for select
+  using (
+    exists (
+      select 1
+      from public.caregiver_invites ci
+      where ci.patient_id = dose_logs.user_id
+        and ci.status = 'accepted'
+        and lower(ci.caregiver_email) = lower(auth.jwt() ->> 'email')
+    )
+  );
 
 create policy "Users can create their own dose logs"
   on public.dose_logs for insert
@@ -218,6 +261,10 @@ create policy "Users can read their own caregiver invites"
   on public.caregiver_invites for select
   using (auth.uid() = patient_id);
 
+create policy "Caregivers can read invites sent to their email"
+  on public.caregiver_invites for select
+  using (lower(caregiver_email) = lower(auth.jwt() ->> 'email'));
+
 create policy "Users can create their own caregiver invites"
   on public.caregiver_invites for insert
   with check (auth.uid() = patient_id);
@@ -225,6 +272,18 @@ create policy "Users can create their own caregiver invites"
 create policy "Users can read their own devices"
   on public.devices for select
   using (auth.uid() = user_id);
+
+create policy "Caregivers can read accepted patient devices"
+  on public.devices for select
+  using (
+    exists (
+      select 1
+      from public.caregiver_invites ci
+      where ci.patient_id = devices.user_id
+        and ci.status = 'accepted'
+        and lower(ci.caregiver_email) = lower(auth.jwt() ->> 'email')
+    )
+  );
 
 create policy "Users can create their own devices"
   on public.devices for insert
@@ -239,6 +298,18 @@ create policy "Users can read their own device slots"
   on public.device_slots for select
   using (auth.uid() = user_id);
 
+create policy "Caregivers can read accepted patient device slots"
+  on public.device_slots for select
+  using (
+    exists (
+      select 1
+      from public.caregiver_invites ci
+      where ci.patient_id = device_slots.user_id
+        and ci.status = 'accepted'
+        and lower(ci.caregiver_email) = lower(auth.jwt() ->> 'email')
+    )
+  );
+
 create policy "Users can create their own device slots"
   on public.device_slots for insert
   with check (auth.uid() = user_id);
@@ -251,3 +322,15 @@ create policy "Users can update their own device slots"
 create policy "Users can read their own device readings"
   on public.device_readings for select
   using (auth.uid() = user_id);
+
+create policy "Caregivers can read accepted patient device readings"
+  on public.device_readings for select
+  using (
+    exists (
+      select 1
+      from public.caregiver_invites ci
+      where ci.patient_id = device_readings.user_id
+        and ci.status = 'accepted'
+        and lower(ci.caregiver_email) = lower(auth.jwt() ->> 'email')
+    )
+  );

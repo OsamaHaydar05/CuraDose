@@ -1,49 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { getCurrentUser, signOut } from "../services/authService";
+import { signOut } from "../services/authService";
+import { getCaregiverDashboardData } from "../services/caregiverDashboardService";
+import { supabase } from "../services/supabaseConfig";
 import "../styles/CaregiverDashboardView.css";
 
 const navItems = ["Overview", "Patients", "Alerts", "Settings"];
-
-const patients = [
-  {
-    id: 1,
-    name: "Anna Karlsson",
-    initials: "AK",
-    status: "On track",
-    tone: "success",
-    nextDose: "20:00",
-    adherence: 92,
-    lastActivity: "Pill taken - 08:05",
-  },
-  {
-    id: 2,
-    name: "Erik Lindgren",
-    initials: "EL",
-    status: "Missed dose",
-    tone: "warn",
-    nextDose: "12:00",
-    adherence: 74,
-    lastActivity: "Reminder sent - 07:58",
-  },
-  {
-    id: 3,
-    name: "Maria Sjoberg",
-    initials: "MS",
-    status: "On track",
-    tone: "success",
-    nextDose: "21:30",
-    adherence: 88,
-    lastActivity: "Box opened - Yesterday",
-  },
-];
-
-const alerts = [
-  { time: "09:12", label: "Erik Lindgren missed morning dose", tone: "warn" },
-  { time: "08:00", label: "Anna Karlsson took morning dose", tone: "success" },
-  { time: "07:30", label: "Maria Sjoberg box refilled", tone: "success" },
-  { time: "Yesterday", label: "Erik Lindgren low adherence trend", tone: "warn" },
-];
 
 function CareIcon({ name }) {
   const commonProps = {
@@ -116,27 +78,63 @@ function toneLabel(tone) {
 export default function CaregiverDashboardView() {
   const navigate = useNavigate();
   const [activeView, setActiveView] = useState("Overview");
-  const [selectedPatientId, setSelectedPatientId] = useState(patients[0].id);
+  const [selectedPatientId, setSelectedPatientId] = useState(null);
   const [caregiverName, setCaregiverName] = useState("Caregiver");
-  const selectedPatient = patients.find((patient) => patient.id === selectedPatientId) || patients[0];
-  const onTrackCount = patients.filter((patient) => patient.tone === "success").length;
-  const needsAttentionCount = patients.filter((patient) => patient.tone === "warn").length;
+  const [patients, setPatients] = useState([]);
+  const [alerts, setAlerts] = useState([]);
+  const [summary, setSummary] = useState({ onTrackCount: 0, needsAttentionCount: 0 });
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+  const selectedPatient = patients.find((patient) => patient.id === selectedPatientId) || patients[0] || null;
+  const onTrackCount = summary.onTrackCount;
+  const needsAttentionCount = summary.needsAttentionCount;
+
+  const loadDashboard = async () => {
+    setError("");
+
+    try {
+      const data = await getCaregiverDashboardData();
+      setCaregiverName(data.caregiverName);
+      setPatients(data.patients);
+      setAlerts(data.alerts);
+      setSummary({
+        onTrackCount: data.onTrackCount,
+        needsAttentionCount: data.needsAttentionCount,
+      });
+      setSelectedPatientId((currentId) => {
+        if (data.patients.some((patient) => patient.id === currentId)) return currentId;
+        return data.patients[0]?.id || null;
+      });
+    } catch (err) {
+      setError(err.message || "Unable to load caregiver dashboard.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    let isMounted = true;
+    let refreshTimer = null;
 
-    getCurrentUser()
-      .then((user) => {
-        if (!isMounted) return;
-        const name = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Caregiver";
-        setCaregiverName(name);
-      })
-      .catch(() => {
-        if (isMounted) setCaregiverName("Caregiver");
-      });
+    const refreshDashboard = () => {
+      window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(loadDashboard, 250);
+    };
+
+    loadDashboard();
+
+    const refreshInterval = window.setInterval(loadDashboard, 15 * 1000);
+    const channel = supabase
+      .channel("caregiver-dashboard-live-sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "caregiver_invites" }, refreshDashboard)
+      .on("postgres_changes", { event: "*", schema: "public", table: "dose_logs" }, refreshDashboard)
+      .on("postgres_changes", { event: "*", schema: "public", table: "device_slots" }, refreshDashboard)
+      .on("postgres_changes", { event: "*", schema: "public", table: "medications" }, refreshDashboard)
+      .subscribe();
 
     return () => {
-      isMounted = false;
+      window.clearTimeout(refreshTimer);
+      window.clearInterval(refreshInterval);
+      supabase.removeChannel(channel);
     };
   }, []);
 
@@ -194,6 +192,8 @@ export default function CaregiverDashboardView() {
           </div>
         </header>
 
+        {error ? <p className="care-error" role="alert">{error}</p> : null}
+
         {activeView === "Overview" ? (
           <div className="care-stack">
             <section className="care-stats" aria-label="Caregiver overview">
@@ -220,24 +220,30 @@ export default function CaregiverDashboardView() {
                 <button type="button" onClick={() => setActiveView("Patients")}>Manage</button>
               </div>
               <div className="care-patient-list">
-                {patients.map((patient) => (
-                  <button
-                    type="button"
-                    key={patient.id}
-                    className="care-patient-row"
-                    onClick={() => {
-                      setSelectedPatientId(patient.id);
-                      setActiveView("Patients");
-                    }}
-                  >
-                    <span className="care-avatar">{patient.initials}</span>
-                    <span>
-                      <strong>{patient.name}</strong>
-                      <small>Next dose - {patient.nextDose}</small>
-                    </span>
-                    <em className={`care-pill care-pill--${patient.tone}`}>{patient.status}</em>
-                  </button>
-                ))}
+                {patients.length ? (
+                  patients.map((patient) => (
+                    <button
+                      type="button"
+                      key={patient.id}
+                      className="care-patient-row"
+                      onClick={() => {
+                        setSelectedPatientId(patient.id);
+                        setActiveView("Patients");
+                      }}
+                    >
+                      <span className="care-avatar">{patient.initials}</span>
+                      <span>
+                        <strong>{patient.name}</strong>
+                        <small>Next dose - {patient.nextDose}</small>
+                      </span>
+                      <em className={`care-pill care-pill--${patient.tone}`}>{patient.status}</em>
+                    </button>
+                  ))
+                ) : (
+                  <p className="care-empty-state">
+                    {isLoading ? "Loading patients..." : "No accepted patient invites yet."}
+                  </p>
+                )}
               </div>
             </section>
 
@@ -247,13 +253,17 @@ export default function CaregiverDashboardView() {
                 <span>Last 24h</span>
               </div>
               <ul className="care-alert-list">
-                {alerts.map((alert) => (
-                  <li key={`${alert.time}-${alert.label}`}>
-                    <span className={`care-alert-dot care-alert-dot--${alert.tone}`} />
-                    <p>{alert.label}</p>
-                    <time>{alert.time}</time>
-                  </li>
-                ))}
+                {alerts.length ? (
+                  alerts.map((alert) => (
+                    <li key={alert.id}>
+                      <span className={`care-alert-dot care-alert-dot--${alert.tone}`} />
+                      <p>{alert.label}</p>
+                      <time>{alert.time}</time>
+                    </li>
+                  ))
+                ) : (
+                  <li className="care-empty-row">No recent alerts.</li>
+                )}
               </ul>
             </section>
           </div>
@@ -267,47 +277,55 @@ export default function CaregiverDashboardView() {
                 <span>{patients.length} total</span>
               </div>
               <div className="care-patient-list">
-                {patients.map((patient) => (
-                  <button
-                    type="button"
-                    key={patient.id}
-                    className={patient.id === selectedPatientId ? "care-patient-row care-patient-row--active" : "care-patient-row"}
-                    onClick={() => setSelectedPatientId(patient.id)}
-                  >
-                    <span className="care-avatar">{patient.initials}</span>
-                    <span>
-                      <strong>{patient.name}</strong>
-                      <small>Adherence - {patient.adherence}%</small>
-                    </span>
-                    <em className={`care-pill care-pill--${patient.tone}`}>{patient.status}</em>
-                  </button>
-                ))}
+                {patients.length ? (
+                  patients.map((patient) => (
+                    <button
+                      type="button"
+                      key={patient.id}
+                      className={patient.id === selectedPatientId ? "care-patient-row care-patient-row--active" : "care-patient-row"}
+                      onClick={() => setSelectedPatientId(patient.id)}
+                    >
+                      <span className="care-avatar">{patient.initials}</span>
+                      <span>
+                        <strong>{patient.name}</strong>
+                        <small>Adherence - {patient.adherence}%</small>
+                      </span>
+                      <em className={`care-pill care-pill--${patient.tone}`}>{patient.status}</em>
+                    </button>
+                  ))
+                ) : (
+                  <p className="care-empty-state">
+                    {isLoading ? "Loading patients..." : "No accepted patient invites yet."}
+                  </p>
+                )}
               </div>
             </section>
 
-            <section className="care-panel">
-              <div className="care-panel-head">
-                <h2>{selectedPatient.name}</h2>
-                <em className={`care-pill care-pill--${selectedPatient.tone}`}>{toneLabel(selectedPatient.tone)}</em>
-              </div>
-              <div className="care-stats">
-                <article className="care-card">
-                  <span>Next Dose</span>
-                  <strong>{selectedPatient.nextDose}</strong>
-                  <p>Scheduled today</p>
-                </article>
-                <article className="care-card">
-                  <span>Adherence</span>
-                  <strong>{selectedPatient.adherence}%</strong>
-                  <p>Last 30 days</p>
-                </article>
-                <article className="care-card">
-                  <span>Last Activity</span>
-                  <strong className="care-card-small">{selectedPatient.lastActivity}</strong>
-                  <p>Latest patient update</p>
-                </article>
-              </div>
-            </section>
+            {selectedPatient ? (
+              <section className="care-panel">
+                <div className="care-panel-head">
+                  <h2>{selectedPatient.name}</h2>
+                  <em className={`care-pill care-pill--${selectedPatient.tone}`}>{toneLabel(selectedPatient.tone)}</em>
+                </div>
+                <div className="care-stats">
+                  <article className="care-card">
+                    <span>Next Dose</span>
+                    <strong>{selectedPatient.nextDose}</strong>
+                    <p>Scheduled today</p>
+                  </article>
+                  <article className="care-card">
+                    <span>Adherence</span>
+                    <strong>{selectedPatient.adherence}%</strong>
+                    <p>Last 30 days</p>
+                  </article>
+                  <article className="care-card">
+                    <span>Last Activity</span>
+                    <strong className="care-card-small">{selectedPatient.lastActivity}</strong>
+                    <p>Latest patient update</p>
+                  </article>
+                </div>
+              </section>
+            ) : null}
           </div>
         ) : null}
 
@@ -318,13 +336,17 @@ export default function CaregiverDashboardView() {
               <span>{alerts.length} items</span>
             </div>
             <ul className="care-alert-list">
-              {alerts.map((alert) => (
-                <li key={`${alert.time}-${alert.label}`}>
-                  <span className={`care-alert-dot care-alert-dot--${alert.tone}`} />
-                  <p>{alert.label}</p>
-                  <em className={`care-pill care-pill--${alert.tone}`}>{alert.time}</em>
-                </li>
-              ))}
+              {alerts.length ? (
+                alerts.map((alert) => (
+                  <li key={alert.id}>
+                    <span className={`care-alert-dot care-alert-dot--${alert.tone}`} />
+                    <p>{alert.label}</p>
+                    <em className={`care-pill care-pill--${alert.tone}`}>{alert.time}</em>
+                  </li>
+                ))
+              ) : (
+                <li className="care-empty-row">No alerts for connected patients.</li>
+              )}
             </ul>
           </section>
         ) : null}
