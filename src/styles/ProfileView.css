@@ -1,0 +1,132 @@
+.profile-page {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  background: #dce7f3;
+  color: var(--color-text-dark);
+}
+
+.profile-shell {
+  width: min(100%, 560px);
+  min-height: 100vh;
+  padding: 28px 22px 48px;
+  background: #edf4fb;
+}
+
+.profile-header,
+.profile-card,
+.profile-details article {
+  display: flex;
+  align-items: center;
+}
+
+.profile-header {
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.profile-header span {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.profile-header h1 {
+  margin: 2px 0 0;
+  font-size: 2rem;
+}
+
+.profile-header a {
+  border-radius: var(--radius-pill);
+  background: var(--color-green);
+  color: #ffffff;
+  padding: 10px 14px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.profile-error {
+  margin: 0 0 14px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  color: #b4233c;
+  background: #fff0f3;
+}
+
+.profile-card,
+.profile-details {
+  border: 1px solid #d8e3ed;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: var(--shadow-card);
+}
+
+.profile-card {
+  gap: 16px;
+  padding: 20px;
+}
+
+.profile-avatar {
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: linear-gradient(145deg, var(--color-green), var(--color-navy));
+  color: #ffffff;
+  font-size: 1.4rem;
+  font-weight: 900;
+}
+
+.profile-card h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.profile-card p {
+  margin: 4px 0 0;
+  color: var(--color-text-muted);
+}
+
+.profile-details {
+  display: grid;
+  margin-top: 14px;
+  overflow: hidden;
+}
+
+.profile-details article {
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 18px;
+}
+
+.profile-details article + article {
+  border-top: 1px solid #d8e3ed;
+}
+
+.profile-details span {
+  color: var(--color-text-muted);
+  font-weight: 800;
+}
+
+.profile-details strong {
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+[data-theme="dark"] .profile-page {
+  background: #061626;
+}
+
+[data-theme="dark"] .profile-shell {
+  background: #07192b;
+}
+
+[data-theme="dark"] .profile-card,
+[data-theme="dark"] .profile-details {
+  border-color: var(--color-border);
+  background: var(--color-white);
+}

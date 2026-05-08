@@ -2,9 +2,12 @@ import { useEffect, useLayoutEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import LoginView from "./views/LoginView";
 import DashboardView from "./views/DashboardView";
+import CaregiverDashboardView from "./views/CaregiverDashboardView";
 import HealthGoalsView from "./views/HealthGoalsView";
 import CaregiverView from "./views/CaregiverView";
 import MedicationScheduleView from "./views/MedicationScheduleView";
+import ProfileView from "./views/ProfileView";
+import SettingsView from "./views/SettingsView";
 import { getCurrentSession } from "./services/authService";
 
 const THEME_STORAGE_KEY = "curadose-theme";
@@ -119,10 +122,34 @@ export default function App() {
           }
         />
         <Route
+          path="/caregiver/dashboard"
+          element={
+            <ProtectedRoute>
+              <CaregiverDashboardView />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/medications"
           element={
             <ProtectedRoute>
               <MedicationScheduleView />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <ProfileView />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <SettingsView theme={theme} setTheme={setTheme} />
             </ProtectedRoute>
           }
         />

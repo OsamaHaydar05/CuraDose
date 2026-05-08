@@ -70,7 +70,7 @@ export default function LoginView({ theme = "system", setTheme }) {
 
     try {
       await loginUser(loginForm.email.trim(), loginForm.password);
-      navigate(location.state?.afterLoginPath || "/dashboard");
+      navigate(location.state?.afterLoginPath || (screen === "caregiver-login" ? "/caregiver/dashboard" : "/dashboard"));
     } catch (error) {
       setErrorMessage(error.message || "Unable to log in.");
     } finally {
