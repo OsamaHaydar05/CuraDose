@@ -22,21 +22,7 @@ const fallbackWeeklyProgress = [
   { day: "Sun", value: 0, total: 0 },
 ];
 
-const quickActions = [
-  { id: "medications", icon: "capsule", label: "Medication Schedule", path: "/medications" },
-  { id: "inventory", icon: "bottle", label: "Inventory" },
-  { id: "device", icon: "scale", label: "Lock Box" },
-  { id: "reminders", icon: "clock", label: "Reminders" },
-  { id: "caregiver", icon: "users", label: "Caregiver" },
-];
-
-const navItems = [
-  { id: "home", icon: "home", label: "Home", active: true },
-  { id: "history", icon: "history", label: "History" },
-  { id: "caregiver", icon: "users", label: "Caregiver" },
-  { id: "settings", icon: "gear", label: "Settings" },
-];
-
+const navItems = ["Home", "Pills", "Profile", "Settings"];
 const DISMISSED_MISSED_DOSE_ALERT_KEY = "curadose-dismissed-missed-dose-alert";
 
 function readDismissedMissedDoseAlertId() {
@@ -57,14 +43,14 @@ function saveDismissedMissedDoseAlertId(alertId) {
 
 function DashboardIcon({ name }) {
   const commonProps = {
-    className: "dashboard-icon",
+    className: "patient-icon",
     viewBox: "0 0 24 24",
     fill: "none",
     xmlns: "http://www.w3.org/2000/svg",
     "aria-hidden": true,
   };
 
-  if (name === "capsule") {
+  if (name === "capsule" || name === "pill") {
     return (
       <svg {...commonProps}>
         <path d="M7.4 16.6 16.6 7.4a4 4 0 0 1 5.7 5.7l-9.2 9.2a4 4 0 1 1-5.7-5.7Z" />
@@ -83,14 +69,66 @@ function DashboardIcon({ name }) {
     );
   }
 
-  if (name === "scale") {
+  if (name === "clock" || name === "history") {
     return (
       <svg {...commonProps}>
-        <path d="M12 4v4" />
-        <path d="M7 8h10" />
-        <path d="M6 20h12" />
-        <path d="M8 8 5 17h6L8 8Z" />
-        <path d="m16 8-3 9h6l-3-9Z" />
+        <circle cx="12" cy="12" r="8.5" />
+        <path d="M12 7v5l3.5 2" />
+        {name === "history" ? <path d="M7 6H3V2" /> : null}
+      </svg>
+    );
+  }
+
+  if (name === "heart") {
+    return (
+      <svg {...commonProps}>
+        <path d="M20.4 5.8a5 5 0 0 0-7.1 0L12 7.1l-1.3-1.3a5 5 0 1 0-7.1 7.1l8.4 8.4 8.4-8.4a5 5 0 0 0 0-7.1Z" />
+      </svg>
+    );
+  }
+
+  if (name === "home") {
+    return (
+      <svg {...commonProps}>
+        <path d="m3 11 9-8 9 8" />
+        <path d="M5.5 10v11h13V10" />
+        <path d="M10 21v-6h4v6" />
+      </svg>
+    );
+  }
+
+  if (name === "settings") {
+    return (
+      <svg {...commonProps}>
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19 12a7.7 7.7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a8 8 0 0 0-1.7-1L14.5 3h-5l-.3 3.1a8 8 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.5a7.7 7.7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a8 8 0 0 0 1.7 1l.3 3.1h5l.3-3.1a8 8 0 0 0 1.7-1l2.4 1 2-3.4-2-1.5c.1-.3.1-.7.1-1Z" />
+      </svg>
+    );
+  }
+
+  if (name === "user") {
+    return (
+      <svg {...commonProps}>
+        <circle cx="12" cy="8" r="4" />
+        <path d="M4 21a8 8 0 0 1 16 0" />
+      </svg>
+    );
+  }
+
+  if (name === "bell") {
+    return (
+      <svg {...commonProps}>
+        <path d="M18 16v-5a6 6 0 1 0-12 0v5l-2 2h16l-2-2Z" />
+        <path d="M10 21h4" />
+      </svg>
+    );
+  }
+
+  if (name === "lock") {
+    return (
+      <svg {...commonProps}>
+        <rect x="5" y="11" width="14" height="9" rx="2" />
+        <path d="M8 11V8a4 4 0 0 1 8 0v3" />
       </svg>
     );
   }
@@ -106,10 +144,12 @@ function DashboardIcon({ name }) {
     );
   }
 
-  if (name === "heart") {
+  if (name === "logout") {
     return (
       <svg {...commonProps}>
-        <path d="M20.4 5.8a5 5 0 0 0-7.1 0L12 7.1l-1.3-1.3a5 5 0 1 0-7.1 7.1l8.4 8.4 8.4-8.4a5 5 0 0 0 0-7.1Z" />
+        <path d="M10 5H5v14h5" />
+        <path d="M14 8l4 4-4 4" />
+        <path d="M8 12h10" />
       </svg>
     );
   }
@@ -124,79 +164,7 @@ function DashboardIcon({ name }) {
     );
   }
 
-  if (name === "clock" || name === "history") {
-    return (
-      <svg {...commonProps}>
-        <circle cx="12" cy="12" r="8.5" />
-        <path d="M12 7v5l3.5 2" />
-        {name === "history" ? <path d="M7 6H3V2" /> : null}
-      </svg>
-    );
-  }
-
-  if (name === "users") {
-    return (
-      <svg {...commonProps}>
-        <path d="M9.5 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" />
-        <path d="M3.5 21a6 6 0 0 1 12 0" />
-        <path d="M16 11a3.2 3.2 0 1 0 0-6.4" />
-        <path d="M18.5 20a5 5 0 0 0-3.2-4.6" />
-      </svg>
-    );
-  }
-
-  if (name === "gear") {
-    return (
-      <svg {...commonProps}>
-        <circle cx="12" cy="12" r="3" />
-        <path d="M19 12a7.7 7.7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a8 8 0 0 0-1.7-1L14.5 3h-5l-.3 3.1a8 8 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.5a7.7 7.7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a8 8 0 0 0 1.7 1l.3 3.1h5l.3-3.1a8 8 0 0 0 1.7-1l2.4 1 2-3.4-2-1.5c.1-.3.1-.7.1-1Z" />
-      </svg>
-    );
-  }
-
-  if (name === "home") {
-    return (
-      <svg {...commonProps}>
-        <path d="m3 11 9-8 9 8" />
-        <path d="M5.5 10v11h13V10" />
-        <path d="M10 21v-6h4v6" />
-      </svg>
-    );
-  }
-
-  if (name === "scan") {
-    return (
-      <svg {...commonProps}>
-        <path d="M5 8V5h3" />
-        <path d="M16 5h3v3" />
-        <path d="M19 16v3h-3" />
-        <path d="M8 19H5v-3" />
-        <path d="M8 10h8" />
-        <path d="M8 14h8" />
-      </svg>
-    );
-  }
-
-  if (name === "logout") {
-    return (
-      <svg {...commonProps}>
-        <path d="M10 5H5v14h5" />
-        <path d="M14 8l4 4-4 4" />
-        <path d="M8 12h10" />
-      </svg>
-    );
-  }
-
   return null;
-}
-
-function MedicationIllustration() {
-  return (
-    <div className="dashboard-pill-art" aria-hidden>
-      <div className="dashboard-pill-tablet">20</div>
-      <div className="dashboard-pill-shadow" />
-    </div>
-  );
 }
 
 function ChartLine({ weeklyProgress, weeklyScore }) {
@@ -207,10 +175,10 @@ function ChartLine({ weeklyProgress, weeklyScore }) {
   const activeDay = new Date().toLocaleDateString([], { weekday: "short" });
 
   return (
-    <div className="dashboard-chart" aria-label="Weekly progress chart">
+    <div className="dashboard-chart patient-chart" aria-label="Weekly progress chart">
       <div className="dashboard-chart-score">
         <strong>{weeklyScore}%</strong>
-        <span>Up</span>
+        <span>Week</span>
       </div>
       <svg viewBox="0 0 276 76" role="img" aria-label="Weekly adherence trend">
         <path className="dashboard-chart-grid" d="M0 18h276M0 52h276" />
@@ -237,9 +205,27 @@ function ChartLine({ weeklyProgress, weeklyScore }) {
   );
 }
 
+function navIconFor(label) {
+  if (label === "Pills") return "pill";
+  if (label === "Profile") return "user";
+  if (label === "Settings") return "settings";
+  return "home";
+}
+
+function statusTone(status) {
+  if (status === "ready") return "success";
+  if (status === "low" || status === "empty") return "warn";
+  return "muted";
+}
+
+function overviewCardById(cards, id) {
+  return cards.find((card) => card.id === id) || null;
+}
+
 export default function DashboardView() {
   const navigate = useNavigate();
   const [dashboardData, setDashboardData] = useState(null);
+  const [activeView, setActiveView] = useState("Home");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isTakingDose, setIsTakingDose] = useState(false);
@@ -392,13 +378,14 @@ export default function DashboardView() {
     isUpdatingNotifications || notificationState.status === "unsupported" || notificationState.status === "denied";
 
   const data = dashboardData || {
-    user: { firstName: "there", avatarInitial: "C" },
+    user: { firstName: "there", avatarInitial: "C", email: "" },
     streakDays: 0,
     nextDose: {
       medicationName: "Loading medication",
       doseText: "Syncing with Supabase",
       timeText: "Please wait",
       medicationId: null,
+      canTakeDose: false,
     },
     overviewCards: [],
     missedDoseAlert: null,
@@ -438,10 +425,19 @@ export default function DashboardView() {
       body: "It helps your body absorb it better.",
     },
   };
+
   const visibleMissedDoseAlert =
     data.missedDoseAlert && data.missedDoseAlert.id !== dismissedMissedDoseAlertId
       ? data.missedDoseAlert
       : null;
+  const dosesCard = overviewCardById(data.overviewCards, "doses");
+  const inventoryCard = overviewCardById(data.overviewCards, "inventory");
+  const caregiverCard = overviewCardById(data.overviewCards, "caregiver");
+  const slots = data.deviceStatus.slots || [];
+  const hasLiveSlots = slots.some((slot) => slot.source === "device");
+  const needsRefill = slots.some((slot) => slot.status === "low" || slot.status === "empty");
+  const boxStatus = needsRefill ? "Needs refill" : hasLiveSlots ? "Synced" : "Setup needed";
+  const notificationBadge = notificationState.enabled ? "Reminders on" : "Reminders off";
 
   const handleDismissMissedDoseAlert = () => {
     if (!visibleMissedDoseAlert?.id) return;
@@ -451,55 +447,73 @@ export default function DashboardView() {
   };
 
   return (
-    <main className="dashboard-page">
-      <section className="dashboard-shell" aria-label="CuraDose dashboard">
-        <header className="dashboard-header">
-          <div className="dashboard-brand">
-            <span className="dashboard-brand-mark" aria-hidden>
-              <DashboardIcon name="capsule" />
-            </span>
-            <span>CuraDose</span>
+    <main className="patient-dashboard" aria-label="CuraDose patient dashboard">
+      <aside className="patient-sidebar">
+        <div className="patient-brand">
+          <span className="patient-brand-icon">
+            <DashboardIcon name="pill" />
+          </span>
+          <div>
+            <strong>CuraDose</strong>
+            <span>Smart Medication</span>
           </div>
-          <div className="dashboard-header-actions">
+        </div>
+
+        <nav className="patient-nav" aria-label="Patient dashboard sections">
+          {navItems.map((label) => (
             <button
-              className={notificationState.enabled ? "dashboard-icon-btn dashboard-bell dashboard-bell--active" : "dashboard-icon-btn dashboard-bell"}
+              key={label}
               type="button"
-              onClick={handleNotificationsToggle}
-              aria-label={notificationState.enabled ? "Turn off dose reminders" : "Enable dose reminders"}
-              title={notificationState.enabled ? "Dose reminders are on" : "Enable dose reminders"}
+              className={activeView === label ? "patient-nav-item patient-nav-item--active" : "patient-nav-item"}
+              onClick={() => setActiveView(label)}
             >
-              <svg viewBox="0 0 24 24" aria-hidden>
-                <path d="M18 16v-5a6 6 0 1 0-12 0v5l-2 2h16l-2-2Z" />
-                <path d="M10 21h4" />
-              </svg>
-              <span className="dashboard-bell-dot" />
+              <DashboardIcon name={navIconFor(label)} />
+              <span>{label}</span>
             </button>
-            <button className="dashboard-icon-btn" type="button" onClick={handleLogout} aria-label="Log out">
+          ))}
+        </nav>
+
+        <div className="patient-device-status">
+          <div>
+            <span className={hasLiveSlots ? "patient-dot patient-dot--ok" : "patient-dot patient-dot--muted"} />
+            Pi sync
+          </div>
+          <strong>{hasLiveSlots ? "Live slot data" : "Waiting for device"}</strong>
+        </div>
+      </aside>
+
+      <section className="patient-main">
+        <header className="patient-header">
+          <div>
+            <span>{activeView === "Home" ? "Welcome back" : activeView}</span>
+            <h1>{activeView === "Home" ? `Hello, ${data.user.firstName}` : activeView}</h1>
+          </div>
+          <div className="patient-header-actions">
+            <span className="patient-badge">
+              <DashboardIcon name="signal" />
+              {isLoading ? "Syncing" : "Synced"}
+            </span>
+            <button
+              type="button"
+              className={notificationState.enabled ? "patient-icon-button patient-icon-button--active" : "patient-icon-button"}
+              onClick={handleNotificationsToggle}
+              disabled={notificationButtonDisabled}
+              aria-label={notificationState.enabled ? "Turn off dose reminders" : "Enable dose reminders"}
+              title={notificationBadge}
+            >
+              <DashboardIcon name="bell" />
+            </button>
+            <button type="button" className="patient-icon-button" onClick={handleLogout} aria-label="Log out">
               <DashboardIcon name="logout" />
             </button>
-            <div className="dashboard-avatar" aria-label={`${data.user.firstName} profile`}>
-              {data.user.avatarInitial}
-            </div>
           </div>
         </header>
 
-        {error ? <p className="dashboard-error">{error}</p> : null}
-
-        <section className="dashboard-greeting">
-          <div>
-            <p>Good morning,</p>
-            <h1>{data.user.firstName}! <span aria-hidden>Hi</span></h1>
-            <p>Stay on track. You've got this!</p>
-          </div>
-          <article className="dashboard-streak" aria-label="Current streak">
-            <span>Streak</span>
-            <strong>{data.streakDays} Days</strong>
-          </article>
-        </section>
+        {error ? <p className="patient-error" role="alert">{error}</p> : null}
 
         {visibleMissedDoseAlert ? (
-          <section className="dashboard-missed-alert" role="alert" aria-label="Missed dose alert">
-            <span className="dashboard-missed-alert-icon">
+          <section className="patient-missed-alert" role="alert" aria-label="Missed dose alert">
+            <span className="patient-alert-icon">
               <DashboardIcon name="warning" />
             </span>
             <div>
@@ -507,194 +521,198 @@ export default function DashboardView() {
               <p>{visibleMissedDoseAlert.message}</p>
               <strong>{visibleMissedDoseAlert.details}</strong>
             </div>
-            <button type="button" onClick={handleDismissMissedDoseAlert} aria-label="Clear missed dose alert">
-              Clear
-            </button>
+            <button type="button" onClick={handleDismissMissedDoseAlert}>Clear</button>
           </section>
         ) : null}
 
-        <section className="dashboard-dose-card" aria-label="Next dose">
-          <div className="dashboard-dose-copy">
-            <span className="dashboard-dose-label">
-              <DashboardIcon name="clock" />
-              Next Dose
-            </span>
-            <h2>{data.nextDose.medicationName}</h2>
-            <p>{data.nextDose.doseText}</p>
-            <span className="dashboard-time-pill">
-              <DashboardIcon name="clock" />
-              {data.nextDose.timeText}
-            </span>
-          </div>
-          <div className="dashboard-dose-action">
-            <MedicationIllustration />
-            <button
-              type="button"
-              onClick={handleTakeDose}
-              disabled={isLoading || isTakingDose || !data.nextDose.medicationId || !data.nextDose.canTakeDose}
-            >
-              {isTakingDose ? "Saving..." : data.nextDose.canTakeDose ? "Take Dose" : "Not due yet"}
-            </button>
-          </div>
-        </section>
-
-        <section className="dashboard-reminder-card" aria-label="Dose reminders">
-          <span className="dashboard-reminder-icon">
-            <DashboardIcon name="clock" />
-          </span>
-          <div>
-            <h2>Dose reminders</h2>
-            <p>{notificationDescription}</p>
-            {notificationMessage ? <strong>{notificationMessage}</strong> : null}
-          </div>
-          <button type="button" onClick={handleNotificationsToggle} disabled={notificationButtonDisabled}>
-            {isUpdatingNotifications ? "Saving..." : notificationButtonLabel}
-          </button>
-        </section>
-
-        <button
-          type="button"
-          className="dashboard-reminder-card dashboard-nav-card"
-          aria-label="Open medication schedule"
-          onClick={() => navigate("/medications")}
-        >
-          <span className="dashboard-reminder-icon">
-            <DashboardIcon name="capsule" />
-          </span>
-          <div>
-            <h2>Medication Schedule</h2>
-            <p>View, add, and edit your daily medications.</p>
-          </div>
-          <span className="dashboard-nav-card-cta" aria-hidden>
-            Open
-          </span>
-        </button>
-
-        <div className="dashboard-carousel-dots" aria-hidden>
-          <span className="dashboard-carousel-dot--active" />
-          <span />
-          <span />
-        </div>
-
-        <section className="dashboard-section">
-          <div className="dashboard-section-heading">
-            <h2>Today's Overview</h2>
-            <button type="button" onClick={loadDashboard}>Refresh</button>
-          </div>
-          <div className="dashboard-overview-grid">
-            {data.overviewCards.map((card) => (
-              <article className="dashboard-overview-card" key={card.id}>
-                <span className="dashboard-card-icon">
-                  <DashboardIcon name={card.icon} />
-                </span>
-                <h3>{card.title}</h3>
-                <strong>{card.value}</strong>
-                <p>{card.detail}</p>
-                {typeof card.progress === "number" ? (
-                  <div className="dashboard-progress-track" aria-hidden>
-                    <span style={{ width: `${card.progress}%` }} />
-                  </div>
-                ) : null}
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="dashboard-section dashboard-device-section">
-          <div className="dashboard-section-heading">
-            <div>
-              <h2>{data.deviceStatus.title}</h2>
-              <p>{data.deviceStatus.subtitle}</p>
-            </div>
-            <span className="dashboard-device-sync">
-              <DashboardIcon name="signal" />
-              Pi sync
-            </span>
-          </div>
-          <div className="dashboard-device-grid">
-            {data.deviceStatus.slots.map((slot) => (
-              <article className={`dashboard-device-card dashboard-device-card--${slot.status}`} key={slot.id}>
-                <div className="dashboard-device-card-header">
-                  <span>{slot.label}</span>
-                  <strong>{slot.statusLabel}</strong>
+        {activeView === "Home" ? (
+          <div className="patient-stack">
+            <section className="patient-cards" aria-label="Dashboard overview">
+              <article className="patient-card">
+                <div className="patient-card-head">
+                  <span>Box Status</span>
+                  <DashboardIcon name="lock" />
                 </div>
-                <h3>{slot.medicationName}</h3>
-                <div className="dashboard-device-metrics">
-                  <div>
-                    <span>Pills</span>
-                    <strong>{slot.pillCount}</strong>
-                  </div>
-                  <div>
-                    <span>Box</span>
-                    <strong>{slot.boxStatusText}</strong>
-                  </div>
+                <div className="patient-card-status">
+                  <span className={needsRefill ? "patient-dot patient-dot--warn" : "patient-dot patient-dot--ok"} />
+                  <strong>{boxStatus}</strong>
                 </div>
-                <p>{slot.syncText}</p>
+                <p>{data.deviceStatus.subtitle}</p>
+                <button type="button" className="patient-primary-button" onClick={() => setActiveView("Pills")}>
+                  View boxes
+                </button>
               </article>
-            ))}
-          </div>
-        </section>
 
-        <section className="dashboard-section dashboard-progress-section">
-          <div className="dashboard-progress-heading">
-            <div>
-              <h2>Weekly Progress</h2>
-              <p>{isLoading ? "Syncing your progress..." : "Synced with your medication history."}</p>
+              <article className="patient-card">
+                <div className="patient-card-head">
+                  <span>Next Pill</span>
+                  <DashboardIcon name="clock" />
+                </div>
+                <strong className="patient-card-value">{data.nextDose.timeText}</strong>
+                <p>{data.nextDose.medicationName}</p>
+                {data.nextDose.doseText ? <small>{data.nextDose.doseText}</small> : null}
+                <button
+                  type="button"
+                  className="patient-primary-button"
+                  onClick={handleTakeDose}
+                  disabled={isLoading || isTakingDose || !data.nextDose.medicationId || !data.nextDose.canTakeDose}
+                >
+                  {isTakingDose ? "Saving..." : data.nextDose.canTakeDose ? "Take Dose" : "Not due yet"}
+                </button>
+              </article>
+
+              <article className="patient-card">
+                <div className="patient-card-head">
+                  <span>Weekly Adherence</span>
+                  <DashboardIcon name="history" />
+                </div>
+                <strong className="patient-card-value">{data.weeklyScore}%</strong>
+                <p>{dosesCard ? `${dosesCard.value} doses today` : "No doses scheduled today"}</p>
+                <div className="patient-progress">
+                  <span style={{ width: `${data.weeklyScore}%` }} />
+                </div>
+              </article>
+
+              <article className="patient-card">
+                <div className="patient-card-head">
+                  <span>Remaining Pills</span>
+                  <DashboardIcon name="bottle" />
+                </div>
+                <strong className="patient-card-value">{inventoryCard?.value || "0 Pills"}</strong>
+                <p>{inventoryCard?.detail || "No slot data"}</p>
+              </article>
+
+              <article className="patient-card">
+                <div className="patient-card-head">
+                  <span>Caregiver</span>
+                  <DashboardIcon name="heart" />
+                </div>
+                <strong className="patient-card-value">{caregiverCard?.value || "Not added"}</strong>
+                <p>{caregiverCard?.detail || "Invite a caregiver"}</p>
+              </article>
+
+              <article className="patient-card">
+                <div className="patient-card-head">
+                  <span>Dose Reminders</span>
+                  <DashboardIcon name="bell" />
+                </div>
+                <strong className="patient-card-value">{notificationBadge}</strong>
+                <p>{notificationDescription}</p>
+                {notificationMessage ? <small>{notificationMessage}</small> : null}
+              </article>
+            </section>
+
+            <section className="patient-panel">
+              <div className="patient-panel-head">
+                <h2>Compartments</h2>
+                <button type="button" onClick={() => setActiveView("Pills")}>Manage</button>
+              </div>
+              <div className="patient-compartments">
+                {slots.map((slot) => (
+                  <article className="patient-compartment" key={slot.id}>
+                    <div className="patient-compartment-num">{slot.slotNumber}</div>
+                    <div className="patient-compartment-info">
+                      <strong>{slot.label}</strong>
+                      <span>{slot.medicationName}</span>
+                      <small>{slot.syncText}</small>
+                    </div>
+                    <div className="patient-compartment-metric">
+                      <strong>{slot.pillCount}</strong>
+                      <span>pills</span>
+                    </div>
+                    <em className={`patient-pill patient-pill--${statusTone(slot.status)}`}>{slot.statusLabel}</em>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="patient-panel">
+              <div className="patient-panel-head">
+                <h2>Weekly Progress</h2>
+                <span>{isLoading ? "Syncing..." : "Synced with medication history"}</span>
+              </div>
+              <ChartLine weeklyProgress={data.weeklyProgress} weeklyScore={data.weeklyScore} />
+            </section>
+
+            <section className="patient-panel patient-tip-panel">
+              <div>
+                <span>{data.healthTip.title}</span>
+                <h2>{data.healthTip.headline}</h2>
+                <p>{data.healthTip.body}</p>
+              </div>
+              <button type="button" onClick={() => navigate("/medications")}>Medication Schedule</button>
+            </section>
+          </div>
+        ) : null}
+
+        {activeView === "Pills" ? (
+          <div className="patient-stack">
+            <section className="patient-panel">
+              <div className="patient-panel-head">
+                <h2>Medication Schedule</h2>
+                <button type="button" onClick={() => navigate("/medications")}>Open schedule</button>
+              </div>
+              <p className="patient-panel-copy">Add or edit the two medications assigned to the CuraDose compartments.</p>
+            </section>
+
+            <section className="patient-panel">
+              <div className="patient-panel-head">
+                <h2>Live Box Data</h2>
+                <span>2 compartments</span>
+              </div>
+              <div className="patient-compartments patient-compartments--large">
+                {slots.map((slot) => (
+                  <article className="patient-compartment patient-compartment--large" key={slot.id}>
+                    <div className="patient-compartment-num">{slot.slotNumber}</div>
+                    <div className="patient-compartment-info">
+                      <strong>{slot.label}</strong>
+                      <span>{slot.medicationName}</span>
+                      <small>{slot.boxStatusText} - {slot.syncText}</small>
+                    </div>
+                    <div className="patient-compartment-metric">
+                      <strong>{slot.pillCount}</strong>
+                      <span>remaining</span>
+                    </div>
+                    <em className={`patient-pill patient-pill--${statusTone(slot.status)}`}>{slot.statusLabel}</em>
+                  </article>
+                ))}
+              </div>
+            </section>
+          </div>
+        ) : null}
+
+        {activeView === "Profile" ? (
+          <section className="patient-panel">
+            <div className="patient-panel-head">
+              <h2>Profile</h2>
+              <button type="button" onClick={() => navigate("/profile")}>Open profile</button>
             </div>
-          </div>
-          <ChartLine weeklyProgress={data.weeklyProgress} weeklyScore={data.weeklyScore} />
-        </section>
+            <div className="patient-profile-row">
+              <span className="patient-avatar">{data.user.avatarInitial}</span>
+              <div>
+                <strong>{data.user.name || data.user.firstName}</strong>
+                <p>{data.user.email}</p>
+                <small>{data.streakDays} day streak</small>
+              </div>
+            </div>
+          </section>
+        ) : null}
 
-        <section className="dashboard-tip-card">
-          <span className="dashboard-tip-icon" aria-hidden>
-            <svg viewBox="0 0 24 24">
-              <path d="M9 21h6" />
-              <path d="M10 17h4" />
-              <path d="M8 14a6 6 0 1 1 8 0c-1.1.9-1.7 1.8-1.9 3H9.9C9.7 15.8 9.1 14.9 8 14Z" />
-            </svg>
-          </span>
-          <div>
-            <h2>{data.healthTip.title}</h2>
-            <strong>{data.healthTip.headline}</strong>
-            <p>{data.healthTip.body}</p>
+        {activeView === "Settings" ? (
+          <div className="patient-stack">
+            <section className="patient-panel">
+              <div className="patient-panel-head">
+                <h2>Settings</h2>
+                <button type="button" onClick={() => navigate("/settings")}>Open full settings</button>
+              </div>
+              <ul className="patient-settings-list">
+                <li><span>Notifications</span><strong>{notificationBadge}</strong></li>
+                <li><span>Pi sync</span><strong>{hasLiveSlots ? "Connected" : "Waiting"}</strong></li>
+                <li><span>Caregiver</span><strong>{caregiverCard?.value || "Not added"}</strong></li>
+              </ul>
+            </section>
           </div>
-          <div className="dashboard-tip-art" aria-hidden>
-            <span />
-            <span />
-          </div>
-        </section>
-
-        <section className="dashboard-section dashboard-actions-section">
-          <h2>Quick Actions</h2>
-          <div className="dashboard-actions-grid">
-            {quickActions.map((action) => (
-              <button
-                className="dashboard-action-card"
-                type="button"
-                key={action.id}
-                onClick={() => {
-                  if (action.path) navigate(action.path);
-                }}
-              >
-                <DashboardIcon name={action.icon} />
-                <span>{action.label}</span>
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <nav className="dashboard-bottom-nav" aria-label="Dashboard navigation">
-          {navItems.map((item) => (
-            <button
-              className={item.active ? "dashboard-nav-item dashboard-nav-item--active" : "dashboard-nav-item"}
-              type="button"
-              key={item.id}
-            >
-              <DashboardIcon name={item.icon} />
-              <span>{item.label}</span>
-            </button>
-          ))}
-        </nav>
+        ) : null}
       </section>
     </main>
   );
