@@ -89,25 +89,15 @@ function pillsTakenForLog(log) {
 function missedDoseSummary(logs, medicationsById) {
   if (!logs.length) return null;
 
-  const sortedLogs = [...logs].sort((a, b) => new Date(b.scheduled_for) - new Date(a.scheduled_for));
-  const alertId = sortedLogs
-    .map((log) => log.id || `${log.medication_id}:${log.scheduled_for}`)
-    .sort()
-    .join("|");
-  const details = sortedLogs.slice(0, 2).map((log) => {
-    const medicationName = medicationsById[log.medication_id]?.name || "Medication";
-    return `${medicationName} at ${formatDoseTime(log.scheduled_for)}`;
-  });
+  const latestLog = [...logs].sort((a, b) => new Date(b.scheduled_for) - new Date(a.scheduled_for))[0];
+  const medicationName = medicationsById[latestLog.medication_id]?.name || "Medication";
 
   return {
-    id: alertId,
-    count: logs.length,
-    title: logs.length === 1 ? "Missed dose" : "Missed doses",
-    message:
-      logs.length === 1
-        ? "You missed one scheduled dose today."
-        : `You missed ${logs.length} scheduled doses today.`,
-    details: details.join(" | "),
+    id: `missed-${latestLog.id || `${latestLog.medication_id}:${latestLog.scheduled_for}`}`,
+    count: 1,
+    title: "Missed dose",
+    message: "You missed a scheduled dose today.",
+    details: `${medicationName} at ${formatDoseTime(latestLog.scheduled_for)}`,
   };
 }
 
@@ -122,33 +112,22 @@ function extraDoseSummary(logs, medicationsById) {
 
   if (!extraLogs.length) return null;
 
-  const sortedLogs = [...extraLogs].sort((a, b) => {
+  const latestLog = [...extraLogs].sort((a, b) => {
     const aDate = new Date(a.taken_at || a.updated_at || a.scheduled_for);
     const bDate = new Date(b.taken_at || b.updated_at || b.scheduled_for);
     return bDate - aDate;
-  });
-  const alertId = sortedLogs
-    .map((log) => `extra-${log.id || `${log.medication_id}:${log.scheduled_for}`}:${log.pills_difference}`)
-    .sort()
-    .join("|");
-  const details = sortedLogs.slice(0, 2).map((log) => {
-    const medication = medicationsById[log.medication_id];
-    const medicationName = medication?.name || "Medication";
-    const expected = expectedPillsForMedication(medication);
-    const taken = pillsTakenForLog(log);
-
-    return `${medicationName}: ${formatPillCount(taken)} ${pillWord(taken)} taken, ${formatPillCount(expected)} ${pillWord(expected)} scheduled`;
-  });
+  })[0];
+  const medication = medicationsById[latestLog.medication_id];
+  const medicationName = medication?.name || "Medication";
+  const expected = expectedPillsForMedication(medication);
+  const taken = pillsTakenForLog(latestLog);
 
   return {
-    id: alertId,
-    count: extraLogs.length,
-    title: extraLogs.length === 1 ? "Possible overdose" : "Possible overdoses",
-    message:
-      extraLogs.length === 1
-        ? "More pills were removed than scheduled for one dose today."
-        : `More pills were removed than scheduled for ${extraLogs.length} doses today.`,
-    details: details.join(" | "),
+    id: `extra-${latestLog.id || `${latestLog.medication_id}:${latestLog.scheduled_for}`}:${latestLog.pills_difference}`,
+    count: 1,
+    title: "Possible overdose",
+    message: "More pills were removed than scheduled for this dose.",
+    details: `${medicationName}: ${formatPillCount(taken)} ${pillWord(taken)} taken, ${formatPillCount(expected)} ${pillWord(expected)} scheduled`,
   };
 }
 

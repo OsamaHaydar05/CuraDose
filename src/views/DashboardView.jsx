@@ -427,9 +427,11 @@ export default function DashboardView() {
     },
   };
 
-  const visibleDoseAlert = [data.extraDoseAlert, data.missedDoseAlert].find(
-    (alert) => alert && alert.id !== dismissedDoseAlertId
-  ) || null;
+  const currentDoseAlertDismissalId = [data.extraDoseAlert?.id, data.missedDoseAlert?.id].filter(Boolean).join("|");
+  const visibleDoseAlert =
+    currentDoseAlertDismissalId && currentDoseAlertDismissalId !== dismissedDoseAlertId
+      ? data.extraDoseAlert || data.missedDoseAlert
+      : null;
   const dosesCard = overviewCardById(data.overviewCards, "doses");
   const inventoryCard = overviewCardById(data.overviewCards, "inventory");
   const caregiverCard = overviewCardById(data.overviewCards, "caregiver");
@@ -442,8 +444,8 @@ export default function DashboardView() {
   const handleDismissDoseAlert = () => {
     if (!visibleDoseAlert?.id) return;
 
-    saveDismissedDoseAlertId(visibleDoseAlert.id);
-    setDismissedDoseAlertId(visibleDoseAlert.id);
+    saveDismissedDoseAlertId(currentDoseAlertDismissalId);
+    setDismissedDoseAlertId(currentDoseAlertDismissalId);
   };
 
   return (
