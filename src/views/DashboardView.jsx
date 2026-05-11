@@ -559,7 +559,7 @@ export default function DashboardView() {
                   onClick={handleTakeDose}
                   disabled={isLoading || isTakingDose || !data.nextDose.medicationId || !data.nextDose.canTakeDose}
                 >
-                  {isTakingDose ? "Saving..." : data.nextDose.canTakeDose ? "Take Dose" : "Not due yet"}
+                  {isTakingDose ? "Saving..." : data.nextDose.canTakeDose ? "Taken Dose" : "Not due yet"}
                 </button>
               </article>
 

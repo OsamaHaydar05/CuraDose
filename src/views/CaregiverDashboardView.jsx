@@ -322,7 +322,7 @@ export default function CaregiverDashboardView() {
                       <span className="care-avatar">{patient.initials}</span>
                       <span>
                         <strong>{patient.name}</strong>
-                        <small>Next dose - {patient.nextDose}</small>
+                        <small>Next dose - {patient.nextDose} | {patient.remainingPills} pills left</small>
                       </span>
                       <em className={`care-pill care-pill--${patient.tone}`}>{patient.status}</em>
                     </button>
@@ -493,7 +493,7 @@ export default function CaregiverDashboardView() {
                       <span className="care-avatar">{patient.initials}</span>
                       <span>
                         <strong>{patient.name}</strong>
-                        <small>Adherence - {patient.adherence}%</small>
+                        <small>Adherence - {patient.adherence}% | {patient.remainingPills} pills left</small>
                       </span>
                       <em className={`care-pill care-pill--${patient.tone}`}>{patient.status}</em>
                     </button>
@@ -541,6 +541,11 @@ export default function CaregiverDashboardView() {
                     <span>Adherence</span>
                     <strong>{selectedPatient.adherence}%</strong>
                     <p>Last 30 days</p>
+                  </article>
+                  <article className="care-card">
+                    <span>Remaining Pills</span>
+                    <strong>{selectedPatient.remainingPills}</strong>
+                    <p>{selectedPatient.remainingPillsDetail}</p>
                   </article>
                   <article className="care-card">
                     <span>Last Activity</span>

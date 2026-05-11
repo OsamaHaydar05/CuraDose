@@ -13,13 +13,6 @@ export const ACCESS_MODE = Object.freeze({
 
 export const READ_ONLY_MESSAGE = "Contact your caregiver to make changes.";
 
-const INTERVAL_HOURS_BY_FREQUENCY = {
-  "Every 4 hours": 4,
-  "Every 6 hours": 6,
-  "Every 8 hours": 8,
-  "Every 12 hours": 12,
-};
-
 export function resolveMedicationAccess(user) {
   if (!user) {
     return {
@@ -82,7 +75,6 @@ export function formatScheduleTimesForDisplay(rawTimes) {
 export function timeFieldLabelsForFrequency(frequency) {
   if (frequency === "Twice daily") return ["Dose 1", "Dose 2"];
   if (frequency === "Three times daily") return ["Dose 1", "Dose 2", "Dose 3"];
-  if (INTERVAL_HOURS_BY_FREQUENCY[frequency]) return ["First dose", "Last dose"];
   if (frequency === "As needed") return [];
   return ["Dose time"];
 }
@@ -102,52 +94,11 @@ export function normalizeTimeForDatabase(rawTime) {
   return `${padded(hour)}:${padded(minute)}:00`;
 }
 
-function minutesForTime(rawTime) {
-  if (!rawTime) return null;
-
-  const [hourString, minuteString] = String(rawTime).split(":");
-  const hour = Number(hourString);
-  const minute = Number(minuteString);
-
-  if (Number.isNaN(hour) || Number.isNaN(minute)) {
-    return null;
-  }
-
-  return hour * 60 + minute;
-}
-
-function timeFromMinutes(totalMinutes) {
-  const padded = (value) => value.toString().padStart(2, "0");
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  return `${padded(hours)}:${padded(minutes)}`;
-}
-
 export function scheduleTimesForDraft(draft) {
   const rawTimes = Array.isArray(draft.scheduleTimes)
     ? draft.scheduleTimes
     : [draft.scheduleTime].filter(Boolean);
-  const intervalHours = INTERVAL_HOURS_BY_FREQUENCY[draft.frequency];
-
-  if (!intervalHours) {
-    return rawTimes.filter(Boolean);
-  }
-
-  const start = minutesForTime(rawTimes[0]);
-  const end = minutesForTime(rawTimes[1]);
-
-  if (start === null || end === null || end < start) {
-    return rawTimes.filter(Boolean);
-  }
-
-  const intervalMinutes = intervalHours * 60;
-  const times = [];
-
-  for (let cursor = start; cursor <= end; cursor += intervalMinutes) {
-    times.push(timeFromMinutes(cursor));
-  }
-
-  return times;
+  return rawTimes.filter(Boolean);
 }
 
 export function normalizeScheduleTimesForDatabase(draft) {
@@ -166,16 +117,6 @@ export function validateMedicationDraft(draft) {
 
   if (scheduleTimes.some((time) => !/^\d{1,2}:\d{2}/.test(time))) {
     errors.scheduleTimes = "Use valid dose times.";
-  }
-
-  if (INTERVAL_HOURS_BY_FREQUENCY[draft.frequency]) {
-    const rawTimes = Array.isArray(draft.scheduleTimes) ? draft.scheduleTimes : [];
-    const start = minutesForTime(rawTimes[0]);
-    const end = minutesForTime(rawTimes[1]);
-
-    if (start !== null && end !== null && end < start) {
-      errors.scheduleTimes = "Last dose must be after first dose.";
-    }
   }
 
   return {

@@ -133,6 +133,33 @@ function nextDoseForPatient(logs, medications) {
     .sort((a, b) => new Date(a.next_dose_at) - new Date(b.next_dose_at))[0]?.next_dose_at || null;
 }
 
+function pillInventoryForPatient(slots, medications) {
+  const liveSlots = slots.filter((slot) => typeof slot.current_pill_count === "number");
+
+  if (liveSlots.length) {
+    const total = liveSlots.reduce((sum, slot) => sum + slot.current_pill_count, 0);
+    const detail = liveSlots
+      .sort((a, b) => a.slot_number - b.slot_number)
+      .map((slot) => `${slot.label || `Box ${slot.slot_number}`}: ${slot.current_pill_count}`)
+      .join(" | ");
+
+    return {
+      total,
+      detail: detail || "Live box data",
+    };
+  }
+
+  const medicationCounts = medications
+    .map((medication) => Number(medication.remaining_pills))
+    .filter((count) => Number.isFinite(count));
+  const total = medicationCounts.reduce((sum, count) => sum + count, 0);
+
+  return {
+    total,
+    detail: medicationCounts.length ? "Medication schedule estimate" : "No pill data yet",
+  };
+}
+
 function buildAlerts({ patientsById, logs, slots }) {
   const since = new Date(Date.now() - MS_PER_DAY);
   const logAlerts = logs
@@ -278,7 +305,7 @@ export async function getCaregiverDashboardData() {
       .in("id", acceptedPatientIds),
     supabase
       .from("medications")
-      .select("id,user_id,name,dosage,instructions,next_dose_at,active")
+      .select("id,user_id,name,dosage,instructions,next_dose_at,remaining_pills,active")
       .in("user_id", acceptedPatientIds)
       .eq("active", true),
     supabase
@@ -325,6 +352,7 @@ export async function getCaregiverDashboardData() {
     );
     const lowSlots = patientSlots.filter((slot) => slot.status === "low" || slot.status === "empty");
     const status = patientStatus({ extraDoseToday, missedToday, lowSlots });
+    const inventory = pillInventoryForPatient(patientSlots, patientMedications);
     const name = profile?.full_name || profile?.email?.split("@")[0] || "Patient";
     const latestLog = [...patientLogs].sort(
       (a, b) => new Date(b.updated_at || b.taken_at || b.scheduled_for) - new Date(a.updated_at || a.taken_at || a.scheduled_for)
@@ -339,6 +367,8 @@ export async function getCaregiverDashboardData() {
       tone: status.tone,
       nextDose: formatDoseTime(nextDoseForPatient(patientLogs, patientMedications)),
       adherence: adherenceForLogs(patientLogs),
+      remainingPills: inventory.total,
+      remainingPillsDetail: inventory.detail,
       lastActivity: formatLastActivity(latestLog, patientSlots),
     };
   });

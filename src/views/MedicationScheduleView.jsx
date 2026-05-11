@@ -5,11 +5,9 @@ import {
   READ_ONLY_MESSAGE,
   addMedication,
   editMedication,
-  formatScheduleTimeForDisplay,
   formatScheduleTimesForDisplay,
   loadMedicationSchedule,
   removeMedication,
-  scheduleTimesForDraft,
   timeFieldLabelsForFrequency,
 } from "../presenters/MedicationPresenter";
 import "../styles/DashboardView.css";
@@ -19,10 +17,6 @@ const FREQUENCY_OPTIONS = [
   "Once daily",
   "Twice daily",
   "Three times daily",
-  "Every 4 hours",
-  "Every 6 hours",
-  "Every 8 hours",
-  "Every 12 hours",
   "Weekly",
   "As needed",
 ];
@@ -128,6 +122,7 @@ function ScheduleIcon({ name }) {
 
 function MedicationCard({ medication, canWrite, onEdit, onDelete, onReadOnlyAttempt, isDeleting }) {
   const scheduledTimes = medication.schedule_times?.length ? medication.schedule_times : [medication.schedule_time].filter(Boolean);
+  const frequencyLabel = FREQUENCY_OPTIONS.includes(medication.frequency) ? medication.frequency : "Once daily";
 
   return (
     <article className="med-card" aria-label={medication.name}>
@@ -151,7 +146,7 @@ function MedicationCard({ medication, canWrite, onEdit, onDelete, onReadOnlyAtte
           </div>
           <div>
             <dt>Frequency</dt>
-            <dd>{medication.frequency || "Not set"}</dd>
+            <dd>{frequencyLabel}</dd>
           </div>
         </dl>
 
@@ -202,7 +197,6 @@ function MedicationFormModal({ open, draft, errors, isSaving, isEditing, onChang
 
   const timeLabels = timeFieldLabelsForFrequency(draft.frequency);
   const visibleScheduleTimes = timeLabels.map((_, index) => draft.scheduleTimes?.[index] || "");
-  const generatedScheduleTimes = scheduleTimesForDraft(draft);
 
   const updateFrequency = (frequency) => {
     const labels = timeFieldLabelsForFrequency(frequency);
@@ -297,12 +291,6 @@ function MedicationFormModal({ open, draft, errors, isSaving, isEditing, onChang
           <p className="med-time-note">No fixed reminder time is needed for as-needed medication.</p>
         )}
         {errors.scheduleTimes ? <small className="med-field-error">{errors.scheduleTimes}</small> : null}
-        {generatedScheduleTimes.length > visibleScheduleTimes.filter(Boolean).length ? (
-          <p className="med-time-note">
-            Scheduled at {generatedScheduleTimes.map(formatScheduleTimeForDisplay).join(", ")}.
-          </p>
-        ) : null}
-
         <label className="med-field">
           <span>Instructions</span>
           <textarea
@@ -403,7 +391,7 @@ export default function MedicationScheduleView() {
         scheduleTimes: (medication.schedule_times?.length ? medication.schedule_times : [medication.schedule_time])
           .filter(Boolean)
           .map((time) => time.slice(0, 5)),
-        frequency: medication.frequency || FREQUENCY_OPTIONS[0],
+        frequency: FREQUENCY_OPTIONS.includes(medication.frequency) ? medication.frequency : FREQUENCY_OPTIONS[0],
         instructions: medication.instructions || "",
       },
     });
