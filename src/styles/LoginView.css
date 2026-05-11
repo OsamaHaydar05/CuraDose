@@ -393,21 +393,16 @@
   opacity: 0.95;
 }
 
-.lp-preview-dose-btn {
+.lp-preview-dose-status {
+  display: grid;
+  place-items: center;
   margin-top: var(--space-4);
   width: 100%;
   min-height: 44px;
   border-radius: var(--radius-pill);
-  border: none;
   background: var(--color-white);
   color: var(--color-green);
   font-weight: 700;
-  cursor: pointer;
-  font-family: inherit;
-}
-
-.lp-preview-dose-btn:hover {
-  opacity: 0.95;
 }
 
 .lp-preview-tiles {

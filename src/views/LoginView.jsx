@@ -291,9 +291,7 @@ export default function LoginView({ theme = "system", setTheme }) {
                   <p className="lp-preview-dose-name">Atorvastatin</p>
                   <p className="lp-preview-dose-meta">1 pill</p>
                   <p className="lp-preview-dose-time">Today, 10:00 AM</p>
-                  <button className="lp-preview-dose-btn" type="button">
-                    Taken Dose
-                  </button>
+                  <span className="lp-preview-dose-status">Auto tracked</span>
                 </div>
                 <div className="lp-preview-tiles">
                   <div className="lp-preview-tile">

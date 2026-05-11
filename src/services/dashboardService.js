@@ -163,25 +163,6 @@ function scheduleTimesForMedication(medication) {
   return medication?.schedule_time ? [medication.schedule_time] : [];
 }
 
-function nextDoseAfterForMedication(medication, after = new Date()) {
-  const times = scheduleTimesForMedication(medication);
-
-  if (!times.length) return null;
-
-  for (let dayOffset = 0; dayOffset <= 7; dayOffset += 1) {
-    const baseDate = new Date(after);
-    baseDate.setDate(baseDate.getDate() + dayOffset);
-    const nextDose = times
-      .map((time) => dateForScheduleTime(time, baseDate))
-      .filter((date) => date && date > after)
-      .sort((a, b) => a - b)[0];
-
-    if (nextDose) return nextDose.toISOString();
-  }
-
-  return null;
-}
-
 function scheduledAtForMedication(medication, { now = new Date(), takenCountToday = 0 } = {}) {
   if (medication?.next_dose_at && new Date(medication.next_dose_at) >= startOfDay(now)) {
     return medication.next_dose_at;
@@ -273,6 +254,36 @@ function calculateStreak(logs) {
   return streak;
 }
 
+function doseStatusLabel(todayLogs, nextDoseAt, now = new Date()) {
+  const dueScheduledLog = [...todayLogs]
+    .filter((log) => log.status === "scheduled" && !log.taken_at && new Date(log.scheduled_for) <= now)
+    .sort((a, b) => new Date(b.scheduled_for) - new Date(a.scheduled_for))[0];
+  const latestResolvedLog = [...todayLogs]
+    .filter((log) => log.status === "taken" || log.status === "missed" || log.taken_at)
+    .sort((a, b) => {
+      const aDate = new Date(a.taken_at || a.updated_at || a.scheduled_for);
+      const bDate = new Date(b.taken_at || b.updated_at || b.scheduled_for);
+      return bDate - aDate;
+    })[0];
+
+  if (
+    dueScheduledLog &&
+    (!latestResolvedLog || new Date(dueScheduledLog.scheduled_for) > new Date(latestResolvedLog.scheduled_for))
+  ) {
+    return "Due now";
+  }
+
+  if (latestResolvedLog?.status === "missed" && !latestResolvedLog.taken_at) {
+    return "Missed dose";
+  }
+
+  if (dueScheduledLog || isDoseDue(nextDoseAt, now)) {
+    return "Due now";
+  }
+
+  return nextDoseAt ? "Not due yet" : "No dose scheduled";
+}
+
 function healthTipForGoals(healthGoals) {
   if (healthGoals?.goals?.includes("habit")) {
     return {
@@ -330,6 +341,7 @@ function buildDashboardData({ user, profile, healthGoals, medications, doseLogs,
       .sort((a, b) => new Date(scheduledAt(a)) - new Date(scheduledAt(b)))[0] || medications[0];
   const nextMedication = upcomingLog ? medicationsById[upcomingLog.medication_id] : upcomingMedication;
   const nextDoseAt = upcomingLog?.scheduled_for || scheduledAt(nextMedication);
+  const nextDoseStatusLabel = doseStatusLabel(todayLogs, nextDoseAt, now);
   const weeklyProgress = buildWeek(doseLogs, weekStart);
   const scheduledDays = weeklyProgress.filter((item) => item.total > 0);
   const weeklyScore = scheduledDays.length
@@ -368,6 +380,7 @@ function buildDashboardData({ user, profile, healthGoals, medications, doseLogs,
           timeText: formatDoseTime(nextDoseAt),
           scheduledFor: nextDoseAt,
           canTakeDose: isDoseDue(nextDoseAt, now),
+          statusLabel: nextDoseStatusLabel,
           remainingPills: nextMedication.remaining_pills,
         }
       : {
@@ -378,6 +391,7 @@ function buildDashboardData({ user, profile, healthGoals, medications, doseLogs,
           timeText: "No upcoming dose",
           scheduledFor: null,
           canTakeDose: false,
+          statusLabel: nextDoseStatusLabel,
           remainingPills: null,
         },
     overviewCards: [
@@ -599,105 +613,4 @@ export async function getDashboardData() {
     caregiverInvites: caregiverInvitesResult.data || [],
     deviceSlots: deviceSlotsResult.error ? [] : deviceSlotsResult.data || [],
   });
-}
-
-export async function markDoseTaken({ doseLogId, medicationId, scheduledFor }) {
-  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-
-  if (sessionError) {
-    throw toDatabaseError(sessionError);
-  }
-
-  const user = sessionData.session?.user;
-
-  if (!user) {
-    throw new Error("Please log in before taking a dose.");
-  }
-
-  if (!medicationId) {
-    throw new Error("No medication is scheduled.");
-  }
-
-  if (doseLogId) {
-    const { data: doseLog, error } = await supabase
-      .from("dose_logs")
-      .update({
-        status: "taken",
-        taken_at: new Date().toISOString(),
-      })
-      .eq("id", doseLogId)
-      .eq("user_id", user.id)
-      .eq("status", "scheduled")
-      .lte("scheduled_for", new Date().toISOString())
-      .select("scheduled_for")
-      .maybeSingle();
-
-    if (error) {
-      throw toDatabaseError(error);
-    }
-
-    if (!doseLog) {
-      throw new Error("This dose is not due or has already been taken.");
-    }
-
-    scheduledFor = doseLog.scheduled_for;
-  } else {
-    const { data: medicationSchedule, error: scheduleError } = await supabase
-      .from("medications")
-      .select("next_dose_at,schedule_time,schedule_times")
-      .eq("id", medicationId)
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (scheduleError) {
-      throw toDatabaseError(scheduleError);
-    }
-
-    const doseTime = scheduledFor || scheduledAtForMedication(medicationSchedule);
-
-    if (!isDoseDue(doseTime)) {
-      throw new Error("This dose is not due yet.");
-    }
-
-    const { error } = await supabase.from("dose_logs").insert({
-      user_id: user.id,
-      medication_id: medicationId,
-      scheduled_for: doseTime,
-      status: "taken",
-      taken_at: new Date().toISOString(),
-    });
-
-    if (error) {
-      throw toDatabaseError(error);
-    }
-
-    scheduledFor = doseTime;
-  }
-
-  const { data: medication, error: medicationError } = await supabase
-    .from("medications")
-    .select("remaining_pills,schedule_time,schedule_times")
-    .eq("id", medicationId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (medicationError) {
-    throw toDatabaseError(medicationError);
-  }
-
-  if (medication && typeof medication.remaining_pills === "number") {
-    const { error } = await supabase
-      .from("medications")
-      .update({
-        remaining_pills: Math.max(0, medication.remaining_pills - 1),
-        next_dose_at: nextDoseAfterForMedication(medication, new Date(scheduledFor)),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", medicationId)
-      .eq("user_id", user.id);
-
-    if (error) {
-      throw toDatabaseError(error);
-    }
-  }
 }

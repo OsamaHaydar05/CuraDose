@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getDashboardData, markDoseTaken } from "../services/dashboardService";
+import { getDashboardData } from "../services/dashboardService";
 import { signOut } from "../services/authService";
 import { supabase } from "../services/supabaseConfig";
 import {
@@ -228,7 +228,6 @@ export default function DashboardView() {
   const [activeView, setActiveView] = useState("Home");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [isTakingDose, setIsTakingDose] = useState(false);
   const [isUpdatingNotifications, setIsUpdatingNotifications] = useState(false);
   const [notificationState, setNotificationState] = useState(() => getDoseNotificationState());
   const [notificationMessage, setNotificationMessage] = useState("");
@@ -304,27 +303,6 @@ export default function DashboardView() {
     };
   }, []);
 
-  const handleTakeDose = async () => {
-    if (!dashboardData?.nextDose?.medicationId) return;
-
-    setError("");
-    setIsTakingDose(true);
-
-    try {
-      await markDoseTaken({
-        doseLogId: dashboardData.nextDose.doseLogId,
-        medicationId: dashboardData.nextDose.medicationId,
-        scheduledFor: dashboardData.nextDose.scheduledFor,
-      });
-      await loadDashboard();
-      await syncDoseNotifications();
-    } catch (err) {
-      setError(err.message || "Unable to save this dose.");
-    } finally {
-      setIsTakingDose(false);
-    }
-  };
-
   const handleLogout = async () => {
     setError("");
 
@@ -386,6 +364,7 @@ export default function DashboardView() {
       timeText: "Please wait",
       medicationId: null,
       canTakeDose: false,
+      statusLabel: "Syncing",
     },
     overviewCards: [],
     extraDoseAlert: null,
@@ -553,14 +532,7 @@ export default function DashboardView() {
                 <strong className="patient-card-value">{data.nextDose.timeText}</strong>
                 <p>{data.nextDose.medicationName}</p>
                 {data.nextDose.doseText ? <small>{data.nextDose.doseText}</small> : null}
-                <button
-                  type="button"
-                  className="patient-primary-button"
-                  onClick={handleTakeDose}
-                  disabled={isLoading || isTakingDose || !data.nextDose.medicationId || !data.nextDose.canTakeDose}
-                >
-                  {isTakingDose ? "Saving..." : data.nextDose.canTakeDose ? "Taken Dose" : "Not due yet"}
-                </button>
+                <span className="patient-sync-note">{data.nextDose.statusLabel}</span>
               </article>
 
               <article className="patient-card">
