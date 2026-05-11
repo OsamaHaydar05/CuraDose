@@ -38,6 +38,30 @@ export async function getCurrentUser() {
   return data.user;
 }
 
+export async function getUserRole(user) {
+  const activeUser = user || (await getCurrentUser());
+
+  if (!activeUser) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", activeUser.id)
+    .maybeSingle();
+
+  if (error) {
+    throw toDatabaseError(error);
+  }
+
+  return data?.role || activeUser.user_metadata?.role || "patient";
+}
+
+export function isCaregiverRole(role) {
+  return role === "caregiver" || role === "family";
+}
+
 export async function signInWithEmail(email, password) {
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
@@ -58,17 +82,19 @@ export async function signInWithEmail(email, password) {
 }
 
 export async function signUpWithEmail({
-                                        name,
-                                        email,
-                                        password,
-                                        role,
-                                        caregiverType,
-                                        region,
-                                        hospital,
-                                        title,
-                                      }) {
+  name,
+  email,
+  password,
+  role,
+  caregiverType,
+  region,
+  hospital,
+  title,
+}) {
   const emailRedirectTo =
-      typeof window === "undefined" ? undefined : `${window.location.origin}/dashboard`;
+    typeof window === "undefined"
+      ? undefined
+      : `${window.location.origin}${role === "caregiver" ? "/caregiver/login" : "/dashboard"}`;
 
   const metadata = {
     full_name: name,
@@ -77,12 +103,9 @@ export async function signUpWithEmail({
 
   if (role === "caregiver") {
     metadata.caregiver_type = caregiverType || "private";
-
-    if (caregiverType === "professional") {
-      metadata.region = region || "";
-      metadata.hospital = hospital || "";
-      metadata.title = title || "";
-    }
+    metadata.region = region || "";
+    metadata.hospital = hospital || "";
+    metadata.title = title || "";
   }
 
   const { data, error } = await supabase.auth.signUp({
@@ -114,36 +137,21 @@ export async function signUpWithEmail({
   };
 }
 
-export async function upsertUserProfile({
-                                          id,
-                                          name,
-                                          email,
-                                          role,
-                                          caregiverType,
-                                          region,
-                                          hospital,
-                                          title,
-                                        }) {
-  const profilePayload = {
-    id,
-    full_name: name,
-    email,
-    role,
-    updated_at: new Date().toISOString(),
-  };
-
-  if (role === "caregiver") {
-    profilePayload.caregiver_type = caregiverType || "private";
-    profilePayload.region = region || null;
-    profilePayload.hospital = hospital || null;
-    profilePayload.title = title || null;
-  }
-
+export async function upsertUserProfile({ id, name, email, role }) {
   const { data, error } = await supabase
-      .from("profiles")
-      .upsert(profilePayload, { onConflict: "id" })
-      .select()
-      .single();
+    .from("profiles")
+    .upsert(
+      {
+        id,
+        full_name: name,
+        email,
+        role,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "id" }
+    )
+    .select()
+    .single();
 
   if (error) {
     throw new Error(error.message);
@@ -169,39 +177,30 @@ export async function syncPendingOnboarding() {
   }
 
   const pendingRegistration = readPendingRegistration();
+  const pendingRegistrationMatches =
+    pendingRegistration?.email &&
+    user.email &&
+    pendingRegistration.email.toLowerCase() === user.email.toLowerCase();
+  const { data: existingProfile, error: existingProfileError } = await supabase
+    .from("profiles")
+    .select("full_name,email,role")
+    .eq("id", user.id)
+    .maybeSingle();
 
-  const role =
-      pendingRegistration?.role ||
-      user.user_metadata?.role ||
-      "patient";
-
-  const caregiverType =
-      pendingRegistration?.caregiverType ||
-      user.user_metadata?.caregiver_type ||
-      "private";
+  if (existingProfileError) {
+    throw toDatabaseError(existingProfileError);
+  }
 
   await upsertUserProfile({
     id: user.id,
     name:
-        pendingRegistration?.name ||
-        user.user_metadata?.full_name ||
-        user.email?.split("@")[0] ||
-        "CuraDose User",
-    email: user.email || pendingRegistration?.email,
-    role,
-    caregiverType,
-    region:
-        pendingRegistration?.region ||
-        user.user_metadata?.region ||
-        null,
-    hospital:
-        pendingRegistration?.hospital ||
-        user.user_metadata?.hospital ||
-        null,
-    title:
-        pendingRegistration?.title ||
-        user.user_metadata?.title ||
-        null,
+      (pendingRegistrationMatches ? pendingRegistration.name : null) ||
+      existingProfile?.full_name ||
+      user.user_metadata?.full_name ||
+      user.email?.split("@")[0] ||
+      "CuraDose User",
+    email: user.email || (pendingRegistrationMatches ? pendingRegistration.email : null) || existingProfile?.email,
+    role: (pendingRegistrationMatches ? pendingRegistration.role : null) || existingProfile?.role || user.user_metadata?.role || "patient",
   });
 
   if (pendingRegistration) {
@@ -210,21 +209,23 @@ export async function syncPendingOnboarding() {
 
   const pendingHealthGoals = readPendingHealthGoals();
 
-  if (pendingHealthGoals && role !== "caregiver") {
+  if (pendingHealthGoals && pendingRegistrationMatches) {
     await saveUserHealthGoals(pendingHealthGoals);
+    clearPendingHealthGoals();
+  } else if (pendingHealthGoals && pendingRegistration && !pendingRegistrationMatches) {
     clearPendingHealthGoals();
   }
 
   const pendingCaregiverInvite = readPendingCaregiverInvite();
 
-  if (pendingCaregiverInvite?.email && role !== "caregiver") {
+  if (pendingCaregiverInvite?.email && pendingRegistrationMatches) {
     const { error } = await supabase
-        .from("caregiver_invites")
-        .insert({
-          patient_id: user.id,
-          caregiver_email: pendingCaregiverInvite.email,
-          status: "pending",
-        });
+      .from("caregiver_invites")
+      .insert({
+        patient_id: user.id,
+        caregiver_email: pendingCaregiverInvite.email,
+        status: "pending",
+      });
 
     if (error) {
       throw toDatabaseError(error);

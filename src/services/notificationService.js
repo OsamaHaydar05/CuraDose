@@ -4,6 +4,7 @@ import { supabase } from "./supabaseConfig";
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const MAX_TIMER_DELAY = 2_147_483_647;
 const REMINDER_HORIZON_DAYS = 7;
+const REMINDER_GRACE_MS = MS_PER_DAY;
 const ENABLED_KEY = "curadose-dose-notifications-enabled";
 const DELIVERED_KEY_PREFIX = "curadose-dose-notifications-delivered";
 
@@ -69,8 +70,18 @@ function formatDoseTime(value) {
   });
 }
 
+function formatDosage(value) {
+  const dosage = value?.trim();
+
+  if (!dosage) return "";
+
+  return /^\d+(\.\d+)?$/.test(dosage)
+    ? `${dosage} ${Number(dosage) === 1 ? "pill" : "pills"}`
+    : dosage;
+}
+
 function formatReminderBody(reminder) {
-  const details = [reminder.dosage, reminder.instructions].filter(Boolean).join(" - ");
+  const details = [formatDosage(reminder.dosage), reminder.instructions].filter(Boolean).join(" - ");
   return details || "Open CuraDose to mark this dose as taken.";
 }
 
@@ -88,26 +99,77 @@ function reminderFromDoseLog(log) {
   };
 }
 
-function reminderFromMedication(medication) {
-  return {
-    id: `medication-${medication.id}-${new Date(medication.next_dose_at).getTime()}`,
-    medicationId: medication.id,
-    medicationName: medication.name || "your medication",
-    dosage: medication.dosage || "",
-    instructions: medication.instructions || "",
-    scheduledFor: medication.next_dose_at,
-    source: "medication",
-  };
+function startOfDay(date) {
+  const value = new Date(date);
+  value.setHours(0, 0, 0, 0);
+  return value;
 }
 
-function uniqueFutureReminders(reminders) {
+function dateForScheduleTime(scheduleTime, baseDate = new Date()) {
+  if (!scheduleTime) return null;
+
+  const [hours, minutes] = scheduleTime.split(":").map(Number);
+
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    return null;
+  }
+
+  const doseAt = new Date(baseDate);
+  doseAt.setHours(hours, minutes, 0, 0);
+  return doseAt;
+}
+
+function scheduleTimesForMedication(medication) {
+  if (Array.isArray(medication?.schedule_times) && medication.schedule_times.length) {
+    return medication.schedule_times.filter(Boolean);
+  }
+
+  return medication?.schedule_time ? [medication.schedule_time] : [];
+}
+
+function remindersFromMedication(medication, { graceStart, horizon, completedDoseKeys }) {
+  const times = scheduleTimesForMedication(medication);
+
+  if (!times.length) return [];
+
+  const reminders = [];
+  const cursor = startOfDay(graceStart);
+
+  while (cursor <= horizon) {
+    times.forEach((time) => {
+      const scheduledFor = dateForScheduleTime(time, cursor);
+
+      if (!scheduledFor || scheduledFor < graceStart || scheduledFor > horizon) return;
+
+      const doseKey = `${medication.id}:${scheduledFor.getTime()}`;
+      if (completedDoseKeys.has(doseKey)) return;
+
+      reminders.push({
+        id: `medication-${medication.id}-${scheduledFor.getTime()}`,
+        medicationId: medication.id,
+        medicationName: medication.name || "your medication",
+        dosage: medication.dosage || "",
+        instructions: medication.instructions || "",
+        scheduledFor: scheduledFor.toISOString(),
+        source: "medication",
+      });
+    });
+
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return reminders;
+}
+
+function uniqueDueAndFutureReminders(reminders) {
   const now = Date.now();
+  const graceStart = now - REMINDER_GRACE_MS;
   const seen = new Set();
 
   return reminders
     .filter((reminder) => {
       const scheduledAt = new Date(reminder.scheduledFor).getTime();
-      return Number.isFinite(scheduledAt) && scheduledAt > now;
+      return Number.isFinite(scheduledAt) && scheduledAt >= graceStart;
     })
     .sort((a, b) => new Date(a.scheduledFor) - new Date(b.scheduledFor))
     .filter((reminder) => {
@@ -237,39 +299,49 @@ export function disableDoseNotifications() {
 export async function getUpcomingDoseReminders() {
   const user = await currentUser();
   const now = new Date();
+  const graceStart = new Date(now.getTime() - REMINDER_GRACE_MS);
   const horizon = new Date(now.getTime() + REMINDER_HORIZON_DAYS * MS_PER_DAY);
-
-  const [doseLogsResult, medicationsResult] = await Promise.all([
+  const [doseLogsResult, medicationsResult, takenLogsResult] = await Promise.all([
     supabase
       .from("dose_logs")
       .select("id,medication_id,scheduled_for,status,medications(name,dosage,instructions)")
       .eq("user_id", user.id)
       .eq("status", "scheduled")
-      .gte("scheduled_for", now.toISOString())
+      .gte("scheduled_for", graceStart.toISOString())
       .lte("scheduled_for", horizon.toISOString())
       .order("scheduled_for", { ascending: true }),
     supabase
       .from("medications")
-      .select("id,name,dosage,instructions,next_dose_at")
+      .select("id,name,dosage,instructions,schedule_time,schedule_times,next_dose_at")
       .eq("user_id", user.id)
       .eq("active", true)
-      .not("next_dose_at", "is", null)
-      .gte("next_dose_at", now.toISOString())
-      .lte("next_dose_at", horizon.toISOString())
       .order("next_dose_at", { ascending: true }),
+    supabase
+      .from("dose_logs")
+      .select("medication_id,scheduled_for")
+      .eq("user_id", user.id)
+      .eq("status", "taken")
+      .gte("scheduled_for", graceStart.toISOString())
+      .lte("scheduled_for", horizon.toISOString()),
   ]);
 
-  const firstError = [doseLogsResult.error, medicationsResult.error].find(Boolean);
+  const firstError = [doseLogsResult.error, medicationsResult.error, takenLogsResult.error].find(Boolean);
 
   if (firstError) {
     throw toDatabaseError(firstError);
   }
 
+  const completedDoseKeys = new Set(
+    (takenLogsResult.data || []).map((log) => `${log.medication_id}:${new Date(log.scheduled_for).getTime()}`)
+  );
+
   return {
     userId: user.id,
-    reminders: uniqueFutureReminders([
+    reminders: uniqueDueAndFutureReminders([
       ...(doseLogsResult.data || []).map(reminderFromDoseLog),
-      ...(medicationsResult.data || []).map(reminderFromMedication),
+      ...(medicationsResult.data || []).flatMap((medication) =>
+        remindersFromMedication(medication, { graceStart, horizon, completedDoseKeys })
+      ),
     ]),
   };
 }
@@ -295,8 +367,8 @@ export async function scheduleDoseNotifications() {
   reminders.forEach((reminder) => {
     if (deliveredIds.has(reminder.id)) return;
 
-    const delay = new Date(reminder.scheduledFor).getTime() - Date.now();
-    if (delay < 0 || delay > MAX_TIMER_DELAY) return;
+    const delay = Math.max(0, new Date(reminder.scheduledFor).getTime() - Date.now());
+    if (delay > MAX_TIMER_DELAY) return;
 
     const timerId = window.setTimeout(async () => {
       scheduledTimers.delete(reminder.id);

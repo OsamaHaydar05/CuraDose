@@ -76,6 +76,59 @@
   gap: var(--space-3);
 }
 
+.lp-nav-dropdown {
+  position: relative;
+  display: inline-flex;
+}
+
+.lp-nav-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 0.55rem);
+  right: 0;
+  z-index: 50;
+  min-width: 150px;
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.45rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-white);
+  box-shadow: var(--shadow-card);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease;
+}
+
+.lp-nav-dropdown:hover .lp-nav-dropdown-menu,
+.lp-nav-dropdown:focus-within .lp-nav-dropdown-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.lp-nav-dropdown-menu button {
+  width: 100%;
+  border: 0;
+  border-radius: var(--radius-md);
+  padding: 0.75rem 0.9rem;
+  background: transparent;
+  color: var(--color-text-dark);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.lp-nav-dropdown-menu button:hover,
+.lp-nav-dropdown-menu button:focus-visible {
+  background: var(--color-green-light);
+  color: var(--color-green);
+  outline: none;
+  transform: translateX(2px);
+}
+
 .lp-btn-nav {
   width: auto;
   min-height: 44px;
@@ -340,21 +393,16 @@
   opacity: 0.95;
 }
 
-.lp-preview-dose-btn {
+.lp-preview-dose-status {
+  display: grid;
+  place-items: center;
   margin-top: var(--space-4);
   width: 100%;
   min-height: 44px;
   border-radius: var(--radius-pill);
-  border: none;
   background: var(--color-white);
   color: var(--color-green);
   font-weight: 700;
-  cursor: pointer;
-  font-family: inherit;
-}
-
-.lp-preview-dose-btn:hover {
-  opacity: 0.95;
 }
 
 .lp-preview-tiles {
@@ -1278,65 +1326,9 @@
 [data-theme="dark"] .cg-step-muted .reg-step-label {
   color: var(--color-text-muted);
 }
-.lp-nav-dropdown {
-  position: relative;
-  display: inline-flex;
-}
-
-.lp-nav-dropdown-menu {
-  position: absolute;
-  top: calc(100% + 0.55rem);
-  right: 0;
-  min-width: 150px;
-  padding: 0.45rem;
-  border-radius: 18px;
-  background: var(--color-white);
-  border: 1px solid var(--color-border);
-  box-shadow: var(--shadow-card);
-  display: grid;
-  gap: 0.35rem;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(-6px);
-  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease;
-  z-index: 50;
-}
 
 [data-theme="dark"] .lp-nav-dropdown-menu {
   background: var(--color-bg);
-}
-
-.lp-nav-dropdown:hover .lp-nav-dropdown-menu,
-.lp-nav-dropdown:focus-within .lp-nav-dropdown-menu {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
-}
-
-.lp-nav-dropdown-menu button {
-  width: 100%;
-  border: 0;
-  border-radius: 14px;
-  padding: 0.75rem 0.9rem;
-  background: transparent;
-  color: var(--color-text-dark);
-  font: inherit;
-  font-weight: 700;
-  text-align: left;
-  cursor: pointer;
-  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
-}
-
-[data-theme="dark"] .lp-nav-dropdown-menu button {
-  color: var(--color-text-dark);
-}
-
-.lp-nav-dropdown-menu button:hover,
-.lp-nav-dropdown-menu button:focus-visible {
-  background: var(--color-green-light);
-  color: var(--color-green);
-  transform: translateX(2px);
-  outline: none;
 }
 
 .reg-input-row--spaced {
@@ -1345,4 +1337,50 @@
 
 .caregiver-type-note {
   margin-top: 12px;
+}
+
+.lp-nav-link {
+  border: none;
+  background: transparent;
+  color: var(--color-text-dark);
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0 var(--space-2);
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  transition: color 0.18s ease, opacity 0.18s ease;
+}
+
+.lp-nav-link:hover {
+  color: var(--color-green);
+}
+
+[data-theme="dark"] .lp-nav-link {
+  color: #ffffff;
+}
+
+[data-theme="dark"] .lp-nav-link:hover {
+  color: var(--color-green);
+}
+
+.lp-navbar-actions {
+  gap: var(--space-3);
+}
+
+.lp-btn-nav {
+  width: auto;
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border-radius: 14px;
+  font-size: 0.92rem;
+}
+
+.lp-btn-nav-outline {
+  border-width: 1px;
+}
+
+@media (max-width: 767px) {
+
 }

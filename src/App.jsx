@@ -2,9 +2,14 @@ import { useEffect, useLayoutEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import LoginView from "./views/LoginView";
 import DashboardView from "./views/DashboardView";
+import CaregiverDashboardView from "./views/CaregiverDashboardView";
 import HealthGoalsView from "./views/HealthGoalsView";
 import CaregiverView from "./views/CaregiverView";
-import { getCurrentSession } from "./services/authService";
+import MedicationScheduleView from "./views/MedicationScheduleView";
+import ProfileView from "./views/ProfileView";
+import SettingsView from "./views/SettingsView";
+import ProductPageView from "./views/ProductPageView";
+import { getCurrentSession, getUserRole, isCaregiverRole } from "./services/authService";
 
 const THEME_STORAGE_KEY = "curadose-theme";
 
@@ -25,25 +30,49 @@ function resolveTheme(mode) {
     return mode;
 }
 
-function ProtectedRoute({ children }) {
+function dashboardPathForRole(role) {
+    return isCaregiverRole(role) ? "/caregiver/dashboard" : "/dashboard";
+}
+
+function ProtectedRoute({ children, allowedRoles }) {
     const location = useLocation();
     const [authState, setAuthState] = useState("checking");
+    const [redirectPath, setRedirectPath] = useState("");
 
     useEffect(() => {
         let isMounted = true;
 
         getCurrentSession()
-            .then((session) => {
-                if (isMounted) setAuthState(session ? "authenticated" : "anonymous");
+            .then(async (session) => {
+                if (!isMounted) return;
+
+                if (!session) {
+                    setAuthState("anonymous");
+                    return;
+                }
+
+                const role = await getUserRole(session.user);
+                const roleAllowed = !allowedRoles?.length || allowedRoles.includes(role);
+
+                if (isMounted) {
+                    if (roleAllowed) {
+                        setAuthState("authenticated");
+                    } else {
+                        setRedirectPath(dashboardPathForRole(role));
+                        setAuthState("forbidden");
+                    }
+                }
             })
             .catch(() => {
-                if (isMounted) setAuthState("anonymous");
+                if (isMounted) {
+                    setAuthState("anonymous");
+                }
             });
 
         return () => {
             isMounted = false;
         };
-    }, []);
+    }, [allowedRoles]);
 
     if (authState === "checking") {
         return (
@@ -67,6 +96,10 @@ function ProtectedRoute({ children }) {
                 }}
             />
         );
+    }
+
+    if (authState === "forbidden") {
+        return <Navigate to={redirectPath || "/dashboard"} replace />;
     }
 
     return children;
@@ -99,25 +132,53 @@ export default function App() {
         <BrowserRouter>
             <Routes>
                 <Route path="/" element={<LoginView theme={theme} setTheme={setTheme} />} />
-
                 <Route path="/login" element={<LoginView theme={theme} setTheme={setTheme} />} />
                 <Route path="/create-account" element={<LoginView theme={theme} setTheme={setTheme} />} />
-
                 <Route path="/caregiver/login" element={<LoginView theme={theme} setTheme={setTheme} />} />
                 <Route path="/caregiver/signup" element={<LoginView theme={theme} setTheme={setTheme} />} />
-
+                <Route path="/product" element={<ProductPageView theme={theme} setTheme={setTheme} />} />
                 <Route path="/create-account/health-goals" element={<HealthGoalsView />} />
                 <Route path="/create-account/caregiver" element={<CaregiverView />} />
-
                 <Route
                     path="/dashboard"
                     element={
-                        <ProtectedRoute>
+                        <ProtectedRoute allowedRoles={["patient"]}>
                             <DashboardView />
                         </ProtectedRoute>
                     }
                 />
-
+                <Route
+                    path="/caregiver/dashboard"
+                    element={
+                        <ProtectedRoute allowedRoles={["caregiver", "family"]}>
+                            <CaregiverDashboardView />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/medications"
+                    element={
+                        <ProtectedRoute>
+                            <MedicationScheduleView />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/profile"
+                    element={
+                        <ProtectedRoute>
+                            <ProfileView />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/settings"
+                    element={
+                        <ProtectedRoute>
+                            <SettingsView theme={theme} setTheme={setTheme} />
+                        </ProtectedRoute>
+                    }
+                />
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         </BrowserRouter>
