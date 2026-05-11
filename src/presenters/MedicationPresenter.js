@@ -33,6 +33,7 @@ export function resolveMedicationAccess(user) {
     return {
       mode: ACCESS_MODE.CAREGIVER,
       canWrite: true,
+      targetUserId: user.scheduleUserId || user.id,
       readOnlyMessage: "",
     };
   }
@@ -41,6 +42,7 @@ export function resolveMedicationAccess(user) {
     return {
       mode: ACCESS_MODE.MANAGED,
       canWrite: false,
+      targetUserId: user.scheduleUserId || user.id,
       readOnlyMessage: READ_ONLY_MESSAGE,
     };
   }
@@ -48,6 +50,7 @@ export function resolveMedicationAccess(user) {
   return {
     mode: ACCESS_MODE.INDEPENDENT,
     canWrite: true,
+    targetUserId: user.scheduleUserId || user.id,
     readOnlyMessage: "",
   };
 }
@@ -187,8 +190,8 @@ function ensureWriteAccess(access) {
   }
 }
 
-export async function loadMedicationSchedule() {
-  const data = await getMedicationSchedule();
+export async function loadMedicationSchedule(patientId = null) {
+  const data = await getMedicationSchedule(patientId);
   const access = resolveMedicationAccess(data.user);
 
   return {
@@ -208,6 +211,7 @@ export async function addMedication(access, draft) {
   }
 
   return createMedication({
+    userId: access.targetUserId,
     name: draft.name,
     dosage: draft.dosage,
     frequency: draft.frequency,
@@ -227,6 +231,7 @@ export async function editMedication(access, medicationId, draft) {
   }
 
   return updateMedication(medicationId, {
+    userId: access.targetUserId,
     name: draft.name,
     dosage: draft.dosage,
     frequency: draft.frequency,
@@ -238,5 +243,5 @@ export async function editMedication(access, medicationId, draft) {
 
 export async function removeMedication(access, medicationId) {
   ensureWriteAccess(access);
-  await deleteMedication(medicationId);
+  await deleteMedication(medicationId, access.targetUserId);
 }

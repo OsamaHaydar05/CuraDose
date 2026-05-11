@@ -177,12 +177,30 @@ export async function syncPendingOnboarding() {
   }
 
   const pendingRegistration = readPendingRegistration();
+  const pendingRegistrationMatches =
+    pendingRegistration?.email &&
+    user.email &&
+    pendingRegistration.email.toLowerCase() === user.email.toLowerCase();
+  const { data: existingProfile, error: existingProfileError } = await supabase
+    .from("profiles")
+    .select("full_name,email,role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (existingProfileError) {
+    throw toDatabaseError(existingProfileError);
+  }
 
   await upsertUserProfile({
     id: user.id,
-    name: pendingRegistration?.name || user.user_metadata?.full_name || user.email?.split("@")[0] || "CuraDose User",
-    email: user.email || pendingRegistration?.email,
-    role: pendingRegistration?.role || user.user_metadata?.role || "patient",
+    name:
+      (pendingRegistrationMatches ? pendingRegistration.name : null) ||
+      existingProfile?.full_name ||
+      user.user_metadata?.full_name ||
+      user.email?.split("@")[0] ||
+      "CuraDose User",
+    email: user.email || (pendingRegistrationMatches ? pendingRegistration.email : null) || existingProfile?.email,
+    role: (pendingRegistrationMatches ? pendingRegistration.role : null) || existingProfile?.role || user.user_metadata?.role || "patient",
   });
 
   if (pendingRegistration) {
@@ -191,14 +209,16 @@ export async function syncPendingOnboarding() {
 
   const pendingHealthGoals = readPendingHealthGoals();
 
-  if (pendingHealthGoals) {
+  if (pendingHealthGoals && pendingRegistrationMatches) {
     await saveUserHealthGoals(pendingHealthGoals);
+    clearPendingHealthGoals();
+  } else if (pendingHealthGoals && pendingRegistration && !pendingRegistrationMatches) {
     clearPendingHealthGoals();
   }
 
   const pendingCaregiverInvite = readPendingCaregiverInvite();
 
-  if (pendingCaregiverInvite?.email) {
+  if (pendingCaregiverInvite?.email && pendingRegistrationMatches) {
     const { error } = await supabase
       .from("caregiver_invites")
       .insert({

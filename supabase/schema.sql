@@ -281,6 +281,9 @@ drop policy if exists "Caregivers can read invites sent to their email" on publi
 drop policy if exists "Caregivers can read pending patient profiles" on public.profiles;
 drop policy if exists "Caregivers can read accepted patient profiles" on public.profiles;
 drop policy if exists "Caregivers can read accepted patient medications" on public.medications;
+drop policy if exists "Caregivers can create accepted patient medications" on public.medications;
+drop policy if exists "Caregivers can update accepted patient medications" on public.medications;
+drop policy if exists "Caregivers can delete accepted patient medications" on public.medications;
 drop policy if exists "Caregivers can read accepted patient dose logs" on public.dose_logs;
 drop policy if exists "Caregivers can read accepted patient devices" on public.devices;
 drop policy if exists "Caregivers can read accepted patient device slots" on public.device_slots;
@@ -349,6 +352,51 @@ create policy "Users can read their own medications"
 
 create policy "Caregivers can read accepted patient medications"
   on public.medications for select
+  using (
+    exists (
+      select 1
+      from public.caregiver_invites ci
+      where ci.patient_id = medications.user_id
+        and ci.status = 'accepted'
+        and lower(ci.caregiver_email) = lower(auth.jwt() ->> 'email')
+    )
+  );
+
+create policy "Caregivers can create accepted patient medications"
+  on public.medications for insert
+  with check (
+    exists (
+      select 1
+      from public.caregiver_invites ci
+      where ci.patient_id = medications.user_id
+        and ci.status = 'accepted'
+        and lower(ci.caregiver_email) = lower(auth.jwt() ->> 'email')
+    )
+  );
+
+create policy "Caregivers can update accepted patient medications"
+  on public.medications for update
+  using (
+    exists (
+      select 1
+      from public.caregiver_invites ci
+      where ci.patient_id = medications.user_id
+        and ci.status = 'accepted'
+        and lower(ci.caregiver_email) = lower(auth.jwt() ->> 'email')
+    )
+  )
+  with check (
+    exists (
+      select 1
+      from public.caregiver_invites ci
+      where ci.patient_id = medications.user_id
+        and ci.status = 'accepted'
+        and lower(ci.caregiver_email) = lower(auth.jwt() ->> 'email')
+    )
+  );
+
+create policy "Caregivers can delete accepted patient medications"
+  on public.medications for delete
   using (
     exists (
       select 1

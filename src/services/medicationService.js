@@ -98,27 +98,66 @@ export async function saveUserHealthGoals({ rating, goals, confidence }) {
   return data;
 }
 
-export async function getMedicationSchedule() {
+export async function getMedicationSchedule(patientId = null) {
   const user = await requireSessionUser();
+  const targetUserId = patientId || user.id;
+  const isViewingPatient = targetUserId !== user.id;
 
-  const [profileResult, medicationsResult, caregiverInvitesResult] = await Promise.all([
+  const viewerProfileResult = await supabase
+    .from("profiles")
+    .select("id,full_name,email,role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (viewerProfileResult.error) {
+    throw toDatabaseError(viewerProfileResult.error);
+  }
+
+  const viewerProfile = viewerProfileResult.data;
+  const viewerRole = viewerProfile?.role || user.user_metadata?.role || "patient";
+
+  if (isViewingPatient) {
+    if (viewerRole !== "caregiver" && viewerRole !== "family") {
+      throw new Error("Only caregivers can manage a patient's medication schedule.");
+    }
+
+    const { data: connection, error: connectionError } = await supabase
+      .from("caregiver_invites")
+      .select("id")
+      .eq("patient_id", targetUserId)
+      .ilike("caregiver_email", user.email || "")
+      .eq("status", "accepted")
+      .maybeSingle();
+
+    if (connectionError) {
+      throw toDatabaseError(connectionError);
+    }
+
+    if (!connection) {
+      throw new Error("This patient has not accepted your caregiver access.");
+    }
+  }
+
+  const [profileResult, patientProfileResult, medicationsResult, caregiverInvitesResult] = await Promise.all([
     supabase.from("profiles").select("id,full_name,email,role").eq("id", user.id).maybeSingle(),
+    supabase.from("profiles").select("id,full_name,email,role").eq("id", targetUserId).maybeSingle(),
     supabase
       .from("medications")
       .select(MEDICATION_COLUMNS)
-      .eq("user_id", user.id)
+      .eq("user_id", targetUserId)
       .eq("active", true)
       .order("schedule_time", { ascending: true, nullsFirst: false })
       .order("name", { ascending: true }),
     supabase
       .from("caregiver_invites")
       .select("caregiver_email,status,created_at")
-      .eq("patient_id", user.id)
+      .eq("patient_id", targetUserId)
       .order("created_at", { ascending: false }),
   ]);
 
   const firstError = [
     profileResult.error,
+    patientProfileResult.error,
     medicationsResult.error,
     caregiverInvitesResult.error,
   ].find(Boolean);
@@ -127,16 +166,20 @@ export async function getMedicationSchedule() {
     throw toDatabaseError(firstError);
   }
 
-  const profile = profileResult.data;
-  const role = profile?.role || user.user_metadata?.role || "patient";
+  const viewer = profileResult.data;
+  const profile = patientProfileResult.data;
+  const role = viewer?.role || user.user_metadata?.role || "patient";
   const acceptedInvite = (caregiverInvitesResult.data || []).find((invite) => invite.status === "accepted");
 
   return {
     user: {
       id: user.id,
-      email: user.email,
+      scheduleUserId: targetUserId,
+      email: profile?.email || user.email,
       role,
+      viewerFullName: viewer?.full_name || user.user_metadata?.full_name || user.email?.split("@")[0] || "CuraDose User",
       fullName: profile?.full_name || user.user_metadata?.full_name || user.email?.split("@")[0] || "CuraDose User",
+      isViewingPatient,
       hasCaregiver: Boolean(acceptedInvite),
       caregiverEmail: acceptedInvite?.caregiver_email || null,
     },
@@ -164,10 +207,11 @@ function buildMedicationPayload({ name, dosage, frequency, scheduleTime, schedul
 
 export async function createMedication(input) {
   const user = await requireSessionUser();
+  const targetUserId = input.userId || user.id;
 
   const payload = {
     ...buildMedicationPayload(input),
-    user_id: user.id,
+    user_id: targetUserId,
     active: true,
   };
 
@@ -178,7 +222,7 @@ export async function createMedication(input) {
   const { count, error: countError } = await supabase
     .from("medications")
     .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id)
+    .eq("user_id", targetUserId)
     .eq("active", true);
 
   if (countError) {
@@ -204,6 +248,7 @@ export async function createMedication(input) {
 
 export async function updateMedication(medicationId, input) {
   const user = await requireSessionUser();
+  const targetUserId = input.userId || user.id;
 
   if (!medicationId) {
     throw new Error("Missing medication identifier.");
@@ -219,7 +264,7 @@ export async function updateMedication(medicationId, input) {
     .from("medications")
     .update(payload)
     .eq("id", medicationId)
-    .eq("user_id", user.id)
+    .eq("user_id", targetUserId)
     .select(MEDICATION_COLUMNS)
     .single();
 
@@ -230,8 +275,9 @@ export async function updateMedication(medicationId, input) {
   return data;
 }
 
-export async function deleteMedication(medicationId) {
+export async function deleteMedication(medicationId, targetUserId = null) {
   const user = await requireSessionUser();
+  const scheduleUserId = targetUserId || user.id;
 
   if (!medicationId) {
     throw new Error("Missing medication identifier.");
@@ -241,7 +287,7 @@ export async function deleteMedication(medicationId) {
     .from("medications")
     .delete()
     .eq("id", medicationId)
-    .eq("user_id", user.id);
+    .eq("user_id", scheduleUserId);
 
   if (error) {
     throw toDatabaseError(error);

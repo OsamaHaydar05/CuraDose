@@ -282,11 +282,10 @@
   padding: 8px 12px;
 }
 
+.care-schedule-button,
 .care-danger-button {
   border: 0;
   border-radius: var(--radius-pill);
-  background: #fff0f3;
-  color: #b4233c;
   padding: 8px 12px;
   font: inherit;
   font-size: 0.82rem;
@@ -294,6 +293,17 @@
   cursor: pointer;
 }
 
+.care-schedule-button {
+  background: #d8e9f5;
+  color: var(--color-green);
+}
+
+.care-danger-button {
+  background: #fff0f3;
+  color: #b4233c;
+}
+
+.care-schedule-button:disabled,
 .care-danger-button:disabled {
   cursor: not-allowed;
   opacity: 0.62;

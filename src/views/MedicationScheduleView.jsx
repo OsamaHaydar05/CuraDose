@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ACCESS_MODE,
   READ_ONLY_MESSAGE,
@@ -328,6 +328,8 @@ function MedicationFormModal({ open, draft, errors, isSaving, isEditing, onChang
 
 export default function MedicationScheduleView() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const patientId = searchParams.get("patientId");
   const [user, setUser] = useState(null);
   const [access, setAccess] = useState({ mode: ACCESS_MODE.MANAGED, canWrite: false, readOnlyMessage: "" });
   const [medications, setMedications] = useState([]);
@@ -343,7 +345,7 @@ export default function MedicationScheduleView() {
     setIsLoading(true);
 
     try {
-      const data = await loadMedicationSchedule();
+      const data = await loadMedicationSchedule(patientId);
       setUser(data.user);
       setAccess(data.access);
       setMedications(data.medications);
@@ -356,7 +358,7 @@ export default function MedicationScheduleView() {
 
   useEffect(() => {
     loadSchedule();
-  }, []);
+  }, [patientId]);
 
   const sortedMedications = useMemo(() => {
     return [...medications].sort((a, b) => {
@@ -478,6 +480,7 @@ export default function MedicationScheduleView() {
   const isManaged = access.mode === ACCESS_MODE.MANAGED;
   const isCaregiver = access.mode === ACCESS_MODE.CAREGIVER;
   const isAtMedicationLimit = medications.length >= MAX_SCHEDULED_MEDICATIONS;
+  const dashboardPath = isCaregiver ? "/caregiver/dashboard" : "/dashboard";
 
   return (
     <main className="dashboard-page">
@@ -486,7 +489,7 @@ export default function MedicationScheduleView() {
           <button
             type="button"
             className="med-back-button"
-            onClick={() => navigate("/dashboard")}
+            onClick={() => navigate(dashboardPath)}
             aria-label="Back to dashboard"
           >
             <ScheduleIcon name="back" />
@@ -535,7 +538,9 @@ export default function MedicationScheduleView() {
             </span>
             <div>
               <strong>Caregiver mode</strong>
-              <p>You have full write access to this medication schedule.</p>
+              <p>
+                You have full write access to {user?.isViewingPatient ? `${user.fullName}'s` : "this"} medication schedule.
+              </p>
             </div>
           </section>
         ) : null}

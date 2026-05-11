@@ -514,6 +514,13 @@ export default function CaregiverDashboardView() {
                     <em className={`care-pill care-pill--${selectedPatient.tone}`}>{toneLabel(selectedPatient.tone)}</em>
                     <button
                       type="button"
+                      className="care-schedule-button"
+                      onClick={() => navigate(`/medications?patientId=${selectedPatient.id}`)}
+                    >
+                      Medication Schedule
+                    </button>
+                    <button
+                      type="button"
                       className="care-danger-button"
                       onClick={() => handleDisconnectPatient(selectedPatient)}
                       disabled={isSavingConnection}
