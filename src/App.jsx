@@ -8,7 +8,7 @@ import CaregiverView from "./views/CaregiverView";
 import MedicationScheduleView from "./views/MedicationScheduleView";
 import ProfileView from "./views/ProfileView";
 import SettingsView from "./views/SettingsView";
-import { getCurrentSession } from "./services/authService";
+import { getCurrentSession, getUserRole, isCaregiverRole } from "./services/authService";
 
 const THEME_STORAGE_KEY = "curadose-theme";
 
@@ -29,17 +29,37 @@ function resolveTheme(mode) {
   return mode;
 }
 
-function ProtectedRoute({ children }) {
+function dashboardPathForRole(role) {
+  return isCaregiverRole(role) ? "/caregiver/dashboard" : "/dashboard";
+}
+
+function ProtectedRoute({ children, allowedRoles }) {
   const location = useLocation();
   const [authState, setAuthState] = useState("checking");
+  const [redirectPath, setRedirectPath] = useState("");
 
   useEffect(() => {
     let isMounted = true;
 
     getCurrentSession()
-      .then((session) => {
+      .then(async (session) => {
+        if (!isMounted) return;
+
+        if (!session) {
+          setAuthState("anonymous");
+          return;
+        }
+
+        const role = await getUserRole(session.user);
+        const roleAllowed = !allowedRoles?.length || allowedRoles.includes(role);
+
         if (isMounted) {
-          setAuthState(session ? "authenticated" : "anonymous");
+          if (roleAllowed) {
+            setAuthState("authenticated");
+          } else {
+            setRedirectPath(dashboardPathForRole(role));
+            setAuthState("forbidden");
+          }
         }
       })
       .catch(() => {
@@ -51,7 +71,7 @@ function ProtectedRoute({ children }) {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [allowedRoles]);
 
   if (authState === "checking") {
     return (
@@ -75,6 +95,10 @@ function ProtectedRoute({ children }) {
         }}
       />
     );
+  }
+
+  if (authState === "forbidden") {
+    return <Navigate to={redirectPath || "/dashboard"} replace />;
   }
 
   return children;
@@ -116,7 +140,7 @@ export default function App() {
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["patient"]}>
               <DashboardView />
             </ProtectedRoute>
           }
@@ -124,7 +148,7 @@ export default function App() {
         <Route
           path="/caregiver/dashboard"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["caregiver", "family"]}>
               <CaregiverDashboardView />
             </ProtectedRoute>
           }

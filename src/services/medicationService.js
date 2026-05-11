@@ -2,10 +2,10 @@ import { toDatabaseError } from "./databaseErrors";
 import { supabase } from "./supabaseConfig";
 
 const MEDICATION_COLUMNS =
-  "id,name,dosage,instructions,frequency,schedule_time,remaining_pills,refill_threshold,next_dose_at,active";
+  "id,name,dosage,instructions,frequency,schedule_time,schedule_times,remaining_pills,refill_threshold,next_dose_at,active";
 const MAX_ACTIVE_MEDICATIONS = 2;
 
-function nextDoseAtForSchedule(scheduleTime) {
+function scheduleTimeToDate(scheduleTime, baseDate = new Date()) {
   if (!scheduleTime) return null;
 
   const [hours, minutes] = scheduleTime.split(":").map(Number);
@@ -14,9 +14,47 @@ function nextDoseAtForSchedule(scheduleTime) {
     return null;
   }
 
-  const nextDose = new Date();
+  const nextDose = new Date(baseDate);
   nextDose.setHours(hours, minutes, 0, 0);
-  return nextDose.toISOString();
+  return nextDose;
+}
+
+function nextDoseAtForSchedule(scheduleTimes) {
+  const times = Array.isArray(scheduleTimes) ? scheduleTimes.filter(Boolean) : [];
+
+  if (!times.length) return null;
+
+  const now = new Date();
+  const upcomingToday = times
+    .map((time) => scheduleTimeToDate(time, now))
+    .filter((date) => date && date >= now)
+    .sort((a, b) => a - b)[0];
+
+  if (upcomingToday) return upcomingToday.toISOString();
+
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const firstTomorrow = times
+    .map((time) => scheduleTimeToDate(time, tomorrow))
+    .filter(Boolean)
+    .sort((a, b) => a - b)[0];
+
+  if (!firstTomorrow) return null;
+
+  return firstTomorrow.toISOString();
+}
+
+function formatPillDosage(value) {
+  const dosage = value?.trim();
+
+  if (!dosage) return null;
+
+  if (!/^\d+(\.\d+)?$/.test(dosage)) {
+    return dosage;
+  }
+
+  return Number(dosage) === 1 ? "1 pill" : `${dosage} pills`;
 }
 
 async function requireSessionUser() {
@@ -106,13 +144,18 @@ export async function getMedicationSchedule() {
   };
 }
 
-function buildMedicationPayload({ name, dosage, frequency, scheduleTime, instructions, remainingPills }) {
+function buildMedicationPayload({ name, dosage, frequency, scheduleTime, scheduleTimes, instructions, remainingPills }) {
+  const times = Array.isArray(scheduleTimes)
+    ? scheduleTimes.filter(Boolean)
+    : [scheduleTime].filter(Boolean);
+
   return {
     name: name?.trim(),
-    dosage: dosage?.trim() || null,
+    dosage: formatPillDosage(dosage),
     frequency: frequency?.trim() || null,
-    schedule_time: scheduleTime || null,
-    next_dose_at: nextDoseAtForSchedule(scheduleTime),
+    schedule_time: times[0] || null,
+    schedule_times: times,
+    next_dose_at: nextDoseAtForSchedule(times),
     instructions: instructions?.trim() || null,
     ...(typeof remainingPills === "number" ? { remaining_pills: remainingPills } : {}),
     updated_at: new Date().toISOString(),

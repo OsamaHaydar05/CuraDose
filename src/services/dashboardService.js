@@ -48,7 +48,9 @@ function formatDosage(value) {
 
   if (!dosage) return "";
 
-  return /^\d+(\.\d+)?$/.test(dosage) ? `${dosage} mg` : dosage;
+  return /^\d+(\.\d+)?$/.test(dosage)
+    ? `${dosage} ${Number(dosage) === 1 ? "pill" : "pills"}`
+    : dosage;
 }
 
 function doseTextForMedication(medication) {
@@ -90,23 +92,7 @@ function isDoseDue(value, now = new Date()) {
   return scheduledAt <= now.getTime() && now.getTime() - scheduledAt <= DUE_GRACE_MS;
 }
 
-function nextDailyDoseAfter(value, after = new Date()) {
-  const base = value ? new Date(value) : new Date(after);
-
-  if (Number.isNaN(base.getTime())) {
-    return null;
-  }
-
-  const nextDose = new Date(base);
-
-  do {
-    nextDose.setDate(nextDose.getDate() + 1);
-  } while (nextDose <= after);
-
-  return nextDose.toISOString();
-}
-
-function nextDoseAtForScheduleTime(scheduleTime) {
+function dateForScheduleTime(scheduleTime, baseDate = new Date()) {
   if (!scheduleTime) return null;
 
   const [hours, minutes] = scheduleTime.split(":").map(Number);
@@ -115,23 +101,66 @@ function nextDoseAtForScheduleTime(scheduleTime) {
     return null;
   }
 
-  const doseAt = new Date();
+  const doseAt = new Date(baseDate);
   doseAt.setHours(hours, minutes, 0, 0);
-  return doseAt.toISOString();
+  return doseAt;
 }
 
-function scheduledAtForMedication(medication, { now = new Date(), takenToday = false } = {}) {
-  const scheduledAt = medication?.next_dose_at || nextDoseAtForScheduleTime(medication?.schedule_time);
-
-  if (!scheduledAt || !takenToday) {
-    return scheduledAt;
+function scheduleTimesForMedication(medication) {
+  if (Array.isArray(medication?.schedule_times) && medication.schedule_times.length) {
+    return medication.schedule_times.filter(Boolean);
   }
 
-  if (startOfDay(scheduledAt).getTime() === startOfDay(now).getTime()) {
-    return nextDailyDoseAfter(scheduledAt, now);
+  return medication?.schedule_time ? [medication.schedule_time] : [];
+}
+
+function nextDoseAfterForMedication(medication, after = new Date()) {
+  const times = scheduleTimesForMedication(medication);
+
+  if (!times.length) return null;
+
+  for (let dayOffset = 0; dayOffset <= 7; dayOffset += 1) {
+    const baseDate = new Date(after);
+    baseDate.setDate(baseDate.getDate() + dayOffset);
+    const nextDose = times
+      .map((time) => dateForScheduleTime(time, baseDate))
+      .filter((date) => date && date > after)
+      .sort((a, b) => a - b)[0];
+
+    if (nextDose) return nextDose.toISOString();
   }
 
-  return scheduledAt;
+  return null;
+}
+
+function scheduledAtForMedication(medication, { now = new Date(), takenCountToday = 0 } = {}) {
+  if (medication?.next_dose_at && new Date(medication.next_dose_at) >= startOfDay(now)) {
+    return medication.next_dose_at;
+  }
+
+  const times = scheduleTimesForMedication(medication);
+
+  if (!times.length) {
+    return null;
+  }
+
+  const todayDoses = times
+    .map((time) => dateForScheduleTime(time, now))
+    .filter(Boolean)
+    .sort((a, b) => a - b);
+  const nextTodayDose = todayDoses.slice(takenCountToday)[0];
+
+  if (nextTodayDose) {
+    return nextTodayDose.toISOString();
+  }
+
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  return times
+    .map((time) => dateForScheduleTime(time, tomorrow))
+    .filter(Boolean)
+    .sort((a, b) => a - b)[0]?.toISOString() || null;
 }
 
 function displayNameForUser(user, profile) {
@@ -231,18 +260,19 @@ function buildDashboardData({ user, profile, healthGoals, medications, doseLogs,
   });
   const completedToday = todayLogs.filter((log) => log.status === "taken" || log.taken_at).length;
   const missedTodayLogs = todayLogs.filter((log) => log.status === "missed" && !log.taken_at);
-  const completedMedicationIdsToday = new Set(
-    todayLogs
-      .filter((log) => log.status === "taken" || log.taken_at)
-      .map((log) => log.medication_id)
-  );
+  const completedDoseCountsToday = todayLogs
+    .filter((log) => log.status === "taken" || log.taken_at)
+    .reduce((counts, log) => {
+      counts[log.medication_id] = (counts[log.medication_id] || 0) + 1;
+      return counts;
+    }, {});
   const upcomingLog = todayLogs
     .filter((log) => !(log.status === "taken" || log.status === "missed" || log.taken_at))
     .sort((a, b) => new Date(a.scheduled_for) - new Date(b.scheduled_for))[0];
   const scheduledAt = (medication) =>
     scheduledAtForMedication(medication, {
       now,
-      takenToday: completedMedicationIdsToday.has(medication?.id),
+      takenCountToday: completedDoseCountsToday[medication?.id] || 0,
     });
   const upcomingMedication =
     medications
@@ -345,7 +375,7 @@ function fallbackDeviceSlots(medications) {
     return {
       id: `future-slot-${slotNumber}`,
       slotNumber,
-      label: `Box ${slotNumber}`,
+      label: displaySlotName(slotNumber),
       medicationName: medication?.name || "Unassigned",
       pillCount: medication?.remaining_pills ?? 0,
       boxStatusText: "Not connected",
@@ -391,12 +421,21 @@ function boxStatusText(status, pillCount) {
 }
 
 function displaySlotLabel(label, slotNumber) {
-  const fallback = `Box ${slotNumber}`;
+  const fallback = displaySlotName(slotNumber);
   const value = label?.trim();
 
   if (!value) return fallback;
 
-  return value.replace(/^fack\s*(\d+)$/i, "Box $1");
+  if (/^(fack|box)\s*1$/i.test(value)) return displaySlotName(1);
+  if (/^(fack|box)\s*2$/i.test(value)) return displaySlotName(2);
+
+  return value;
+}
+
+function displaySlotName(slotNumber) {
+  if (slotNumber === 1) return "Box 1: Yellow";
+  if (slotNumber === 2) return "Box 2: Blue";
+  return `Box ${slotNumber}`;
 }
 
 function buildDeviceSlots(deviceSlots, medications) {
@@ -411,7 +450,7 @@ function buildDeviceSlots(deviceSlots, medications) {
       return {
         id: `missing-slot-${slotNumber}`,
         slotNumber,
-        label: `Box ${slotNumber}`,
+        label: displaySlotName(slotNumber),
         medicationName: "Unassigned",
         pillCount: 0,
         boxStatusText: "Not configured",
@@ -464,7 +503,7 @@ export async function getDashboardData() {
     supabase.from("health_goals").select("routine_rating,goals,confidence").eq("user_id", user.id).maybeSingle(),
     supabase
       .from("medications")
-      .select("id,name,dosage,instructions,schedule_time,remaining_pills,refill_threshold,next_dose_at")
+      .select("id,name,dosage,instructions,schedule_time,schedule_times,remaining_pills,refill_threshold,next_dose_at")
       .eq("user_id", user.id)
       .eq("active", true)
       .order("next_dose_at", { ascending: true, nullsFirst: false }),
@@ -554,7 +593,7 @@ export async function markDoseTaken({ doseLogId, medicationId, scheduledFor }) {
   } else {
     const { data: medicationSchedule, error: scheduleError } = await supabase
       .from("medications")
-      .select("next_dose_at,schedule_time")
+      .select("next_dose_at,schedule_time,schedule_times")
       .eq("id", medicationId)
       .eq("user_id", user.id)
       .maybeSingle();
@@ -586,7 +625,7 @@ export async function markDoseTaken({ doseLogId, medicationId, scheduledFor }) {
 
   const { data: medication, error: medicationError } = await supabase
     .from("medications")
-    .select("remaining_pills")
+    .select("remaining_pills,schedule_time,schedule_times")
     .eq("id", medicationId)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -600,7 +639,7 @@ export async function markDoseTaken({ doseLogId, medicationId, scheduledFor }) {
       .from("medications")
       .update({
         remaining_pills: Math.max(0, medication.remaining_pills - 1),
-        next_dose_at: nextDailyDoseAfter(scheduledFor),
+        next_dose_at: nextDoseAfterForMedication(medication, new Date(scheduledFor)),
         updated_at: new Date().toISOString(),
       })
       .eq("id", medicationId)

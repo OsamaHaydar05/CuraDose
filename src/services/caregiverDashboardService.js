@@ -160,7 +160,7 @@ export async function getCaregiverDashboardData() {
 
   const { data: invites, error: invitesError } = await supabase
     .from("caregiver_invites")
-    .select("patient_id,status,created_at,caregiver_email")
+    .select("id,patient_id,status,requested_by,created_at,updated_at,caregiver_email")
     .ilike("caregiver_email", caregiverEmail)
     .order("created_at", { ascending: false });
 
@@ -168,15 +168,57 @@ export async function getCaregiverDashboardData() {
     throw toDatabaseError(invitesError);
   }
 
-  const acceptedPatientIds = [...new Set((invites || [])
+  const acceptedInvites = (invites || []).filter((invite) => invite.status === "accepted");
+  const acceptedPatientIds = [...new Set(acceptedInvites
     .filter((invite) => invite.status === "accepted")
     .map((invite) => invite.patient_id))];
+  const pendingInvites = (invites || []).filter(
+    (invite) => invite.status === "pending" && invite.requested_by === "patient"
+  );
+  const sentRequests = (invites || []).filter(
+    (invite) => invite.status === "pending" && invite.requested_by === "caregiver"
+  );
+  const visiblePendingPatientIds = [...new Set([...pendingInvites, ...sentRequests].map((invite) => invite.patient_id))];
+  const visibleProfileIds = [...new Set([...acceptedPatientIds, ...visiblePendingPatientIds])];
+  let visibleProfiles = [];
+
+  if (visibleProfileIds.length) {
+    const { data: profileRows, error: visibleProfilesError } = await supabase
+      .from("profiles")
+      .select("id,full_name,email")
+      .in("id", visibleProfileIds);
+
+    if (visibleProfilesError) {
+      throw toDatabaseError(visibleProfilesError);
+    }
+
+    visibleProfiles = profileRows || [];
+  }
+
+  const profileForPatient = (patientId) => visibleProfiles.find((profile) => profile.id === patientId);
+  const mapConnectionInvite = (invite) => {
+    const profile = profileForPatient(invite.patient_id);
+    const name = profile?.full_name || profile?.email?.split("@")[0] || "Patient";
+
+    return {
+      id: invite.id,
+      patientId: invite.patient_id,
+      patientName: name,
+      patientEmail: profile?.email || "",
+      initials: initialsForName(name, profile?.email),
+      status: invite.status,
+      requestedBy: invite.requested_by,
+      createdAt: invite.created_at,
+    };
+  };
 
   if (!acceptedPatientIds.length) {
     return {
       caregiverName: caregiverProfile?.full_name || user.user_metadata?.full_name || caregiverEmail.split("@")[0] || "Caregiver",
       patients: [],
       alerts: [],
+      pendingInvites: pendingInvites.map(mapConnectionInvite),
+      sentRequests: sentRequests.map(mapConnectionInvite),
       onTrackCount: 0,
       needsAttentionCount: 0,
     };
@@ -217,7 +259,7 @@ export async function getCaregiverDashboardData() {
     throw toDatabaseError(firstError);
   }
 
-  const profiles = profilesResult.data || [];
+  const profiles = profilesResult.data?.length ? profilesResult.data : visibleProfiles;
   const medications = medicationsResult.data || [];
   const logs = doseLogsResult.data || [];
   const slots = slotsResult.data || [];
@@ -228,6 +270,7 @@ export async function getCaregiverDashboardData() {
     const patientLogs = logs.filter((log) => log.user_id === patientId);
     const patientMedications = medications.filter((medication) => medication.user_id === patientId);
     const patientSlots = slots.filter((slot) => slot.user_id === patientId);
+    const acceptedInvite = acceptedInvites.find((invite) => invite.patient_id === patientId);
     const missedToday = patientLogs.filter(
       (log) => log.status === "missed" && new Date(log.scheduled_for) >= todayStart
     );
@@ -240,6 +283,7 @@ export async function getCaregiverDashboardData() {
 
     return {
       id: patientId,
+      connectionId: acceptedInvite?.id || null,
       name,
       initials: initialsForName(name, profile?.email),
       status: status.status,
@@ -260,6 +304,8 @@ export async function getCaregiverDashboardData() {
     caregiverName: caregiverProfile?.full_name || user.user_metadata?.full_name || caregiverEmail.split("@")[0] || "Caregiver",
     patients,
     alerts,
+    pendingInvites: pendingInvites.map(mapConnectionInvite),
+    sentRequests: sentRequests.map(mapConnectionInvite),
     onTrackCount: patients.filter((patient) => patient.tone === "success").length,
     needsAttentionCount: patients.filter((patient) => patient.tone === "warn").length,
   };

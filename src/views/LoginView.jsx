@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { loginUser, registerUser, validateRegistration } from "../presenters/LoginPresenter";
 import { savePendingRegistration } from "../services/onboardingService";
+import { isCaregiverRole, signOut } from "../services/authService";
 import "../styles/LoginView.css";
 
 const initialLoginState = { email: "", password: "" };
@@ -69,8 +70,16 @@ export default function LoginView({ theme = "system", setTheme }) {
     setIsLoading(true);
 
     try {
-      await loginUser(loginForm.email.trim(), loginForm.password);
-      navigate(location.state?.afterLoginPath || (screen === "caregiver-login" ? "/caregiver/dashboard" : "/dashboard"));
+      const user = await loginUser(loginForm.email.trim(), loginForm.password);
+      const isCaregiver = isCaregiverRole(user.role);
+
+      if (screen === "caregiver-login" && !isCaregiver) {
+        await signOut();
+        throw new Error("This is a patient account. Please use the patient login.");
+      }
+
+      const fallbackPath = isCaregiver ? "/caregiver/dashboard" : "/dashboard";
+      navigate(location.state?.afterLoginPath || fallbackPath);
     } catch (error) {
       setErrorMessage(error.message || "Unable to log in.");
     } finally {
@@ -280,7 +289,7 @@ export default function LoginView({ theme = "system", setTheme }) {
                     NEXT DOSE
                   </p>
                   <p className="lp-preview-dose-name">Atorvastatin</p>
-                  <p className="lp-preview-dose-meta">20 mg · 1 tablet</p>
+                  <p className="lp-preview-dose-meta">1 pill</p>
                   <p className="lp-preview-dose-time">Today, 10:00 AM</p>
                   <button className="lp-preview-dose-btn" type="button">
                     Take Dose

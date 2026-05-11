@@ -1,5 +1,5 @@
 import { CuraDoseUser } from "../models/CuraDoseModel";
-import { signInWithEmail, signUpWithEmail } from "../services/authService";
+import { getUserRole, signInWithEmail, signUpWithEmail } from "../services/authService";
 
 export async function loginUser(email, password) {
   if (!email || !password) {
@@ -12,12 +12,13 @@ export async function loginUser(email, password) {
 
   const user = await signInWithEmail(email, password);
   const derivedName = user.user_metadata?.full_name || email.split("@")[0] || "CuraDose User";
+  const role = await getUserRole(user);
 
   return new CuraDoseUser({
     id: user.id,
     name: derivedName,
     email: user.email,
-    role: user.user_metadata?.role || "patient",
+    role,
   });
 }
 

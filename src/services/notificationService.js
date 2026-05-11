@@ -75,7 +75,9 @@ function formatDosage(value) {
 
   if (!dosage) return "";
 
-  return /^\d+(\.\d+)?$/.test(dosage) ? `${dosage} mg` : dosage;
+  return /^\d+(\.\d+)?$/.test(dosage)
+    ? `${dosage} ${Number(dosage) === 1 ? "pill" : "pills"}`
+    : dosage;
 }
 
 function formatReminderBody(reminder) {
@@ -103,51 +105,7 @@ function startOfDay(date) {
   return value;
 }
 
-function nextDailyDoseAfter(value, after = new Date()) {
-  const base = value ? new Date(value) : new Date(after);
-
-  if (Number.isNaN(base.getTime())) {
-    return null;
-  }
-
-  const nextDose = new Date(base);
-
-  do {
-    nextDose.setDate(nextDose.getDate() + 1);
-  } while (nextDose <= after);
-
-  return nextDose.toISOString();
-}
-
-function scheduledAtForMedication(medication, { now = new Date(), takenToday = false } = {}) {
-  const scheduledAt = medication?.next_dose_at || nextDoseAtForScheduleTime(medication?.schedule_time);
-
-  if (!scheduledAt || !takenToday) {
-    return scheduledAt;
-  }
-
-  if (startOfDay(scheduledAt).getTime() === startOfDay(now).getTime()) {
-    return nextDailyDoseAfter(scheduledAt, now);
-  }
-
-  return scheduledAt;
-}
-
-function reminderFromMedication(medication, options) {
-  const scheduledFor = scheduledAtForMedication(medication, options);
-
-  return {
-    id: `medication-${medication.id}-${new Date(scheduledFor).getTime()}`,
-    medicationId: medication.id,
-    medicationName: medication.name || "your medication",
-    dosage: medication.dosage || "",
-    instructions: medication.instructions || "",
-    scheduledFor,
-    source: "medication",
-  };
-}
-
-function nextDoseAtForScheduleTime(scheduleTime) {
+function dateForScheduleTime(scheduleTime, baseDate = new Date()) {
   if (!scheduleTime) return null;
 
   const [hours, minutes] = scheduleTime.split(":").map(Number);
@@ -156,9 +114,51 @@ function nextDoseAtForScheduleTime(scheduleTime) {
     return null;
   }
 
-  const doseAt = new Date();
+  const doseAt = new Date(baseDate);
   doseAt.setHours(hours, minutes, 0, 0);
-  return doseAt.toISOString();
+  return doseAt;
+}
+
+function scheduleTimesForMedication(medication) {
+  if (Array.isArray(medication?.schedule_times) && medication.schedule_times.length) {
+    return medication.schedule_times.filter(Boolean);
+  }
+
+  return medication?.schedule_time ? [medication.schedule_time] : [];
+}
+
+function remindersFromMedication(medication, { graceStart, horizon, completedDoseKeys }) {
+  const times = scheduleTimesForMedication(medication);
+
+  if (!times.length) return [];
+
+  const reminders = [];
+  const cursor = startOfDay(graceStart);
+
+  while (cursor <= horizon) {
+    times.forEach((time) => {
+      const scheduledFor = dateForScheduleTime(time, cursor);
+
+      if (!scheduledFor || scheduledFor < graceStart || scheduledFor > horizon) return;
+
+      const doseKey = `${medication.id}:${scheduledFor.getTime()}`;
+      if (completedDoseKeys.has(doseKey)) return;
+
+      reminders.push({
+        id: `medication-${medication.id}-${scheduledFor.getTime()}`,
+        medicationId: medication.id,
+        medicationName: medication.name || "your medication",
+        dosage: medication.dosage || "",
+        instructions: medication.instructions || "",
+        scheduledFor: scheduledFor.toISOString(),
+        source: "medication",
+      });
+    });
+
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return reminders;
 }
 
 function uniqueDueAndFutureReminders(reminders) {
@@ -301,10 +301,7 @@ export async function getUpcomingDoseReminders() {
   const now = new Date();
   const graceStart = new Date(now.getTime() - REMINDER_GRACE_MS);
   const horizon = new Date(now.getTime() + REMINDER_HORIZON_DAYS * MS_PER_DAY);
-  const todayStart = startOfDay(now);
-  const todayEnd = new Date(todayStart.getTime() + MS_PER_DAY - 1);
-
-  const [doseLogsResult, medicationsResult, todayTakenLogsResult] = await Promise.all([
+  const [doseLogsResult, medicationsResult, takenLogsResult] = await Promise.all([
     supabase
       .from("dose_logs")
       .select("id,medication_id,scheduled_for,status,medications(name,dosage,instructions)")
@@ -315,38 +312,35 @@ export async function getUpcomingDoseReminders() {
       .order("scheduled_for", { ascending: true }),
     supabase
       .from("medications")
-      .select("id,name,dosage,instructions,schedule_time,next_dose_at")
+      .select("id,name,dosage,instructions,schedule_time,schedule_times,next_dose_at")
       .eq("user_id", user.id)
       .eq("active", true)
       .order("next_dose_at", { ascending: true }),
     supabase
       .from("dose_logs")
-      .select("medication_id")
+      .select("medication_id,scheduled_for")
       .eq("user_id", user.id)
       .eq("status", "taken")
-      .gte("scheduled_for", todayStart.toISOString())
-      .lte("scheduled_for", todayEnd.toISOString()),
+      .gte("scheduled_for", graceStart.toISOString())
+      .lte("scheduled_for", horizon.toISOString()),
   ]);
 
-  const firstError = [doseLogsResult.error, medicationsResult.error, todayTakenLogsResult.error].find(Boolean);
+  const firstError = [doseLogsResult.error, medicationsResult.error, takenLogsResult.error].find(Boolean);
 
   if (firstError) {
     throw toDatabaseError(firstError);
   }
 
-  const completedMedicationIdsToday = new Set(
-    (todayTakenLogsResult.data || []).map((log) => log.medication_id)
+  const completedDoseKeys = new Set(
+    (takenLogsResult.data || []).map((log) => `${log.medication_id}:${new Date(log.scheduled_for).getTime()}`)
   );
 
   return {
     userId: user.id,
     reminders: uniqueDueAndFutureReminders([
       ...(doseLogsResult.data || []).map(reminderFromDoseLog),
-      ...(medicationsResult.data || []).map((medication) =>
-        reminderFromMedication(medication, {
-          now,
-          takenToday: completedMedicationIdsToday.has(medication.id),
-        })
+      ...(medicationsResult.data || []).flatMap((medication) =>
+        remindersFromMedication(medication, { graceStart, horizon, completedDoseKeys })
       ),
     ]),
   };

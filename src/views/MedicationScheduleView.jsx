@@ -6,8 +6,11 @@ import {
   addMedication,
   editMedication,
   formatScheduleTimeForDisplay,
+  formatScheduleTimesForDisplay,
   loadMedicationSchedule,
   removeMedication,
+  scheduleTimesForDraft,
+  timeFieldLabelsForFrequency,
 } from "../presenters/MedicationPresenter";
 import "../styles/DashboardView.css";
 import "../styles/MedicationScheduleView.css";
@@ -28,6 +31,7 @@ const EMPTY_DRAFT = {
   name: "",
   dosage: "",
   scheduleTime: "",
+  scheduleTimes: [""],
   frequency: FREQUENCY_OPTIONS[0],
   instructions: "",
 };
@@ -123,6 +127,8 @@ function ScheduleIcon({ name }) {
 }
 
 function MedicationCard({ medication, canWrite, onEdit, onDelete, onReadOnlyAttempt, isDeleting }) {
+  const scheduledTimes = medication.schedule_times?.length ? medication.schedule_times : [medication.schedule_time].filter(Boolean);
+
   return (
     <article className="med-card" aria-label={medication.name}>
       <div className="med-card-icon">
@@ -137,10 +143,10 @@ function MedicationCard({ medication, canWrite, onEdit, onDelete, onReadOnlyAtte
 
         <dl className="med-card-meta">
           <div>
-            <dt>Time</dt>
+            <dt>Times</dt>
             <dd>
               <ScheduleIcon name="clock" />
-              {formatScheduleTimeForDisplay(medication.schedule_time)}
+              {formatScheduleTimesForDisplay(scheduledTimes)}
             </dd>
           </div>
           <div>
@@ -194,6 +200,31 @@ function MedicationCard({ medication, canWrite, onEdit, onDelete, onReadOnlyAtte
 function MedicationFormModal({ open, draft, errors, isSaving, isEditing, onChange, onClose, onSubmit }) {
   if (!open) return null;
 
+  const timeLabels = timeFieldLabelsForFrequency(draft.frequency);
+  const visibleScheduleTimes = timeLabels.map((_, index) => draft.scheduleTimes?.[index] || "");
+  const generatedScheduleTimes = scheduleTimesForDraft(draft);
+
+  const updateFrequency = (frequency) => {
+    const labels = timeFieldLabelsForFrequency(frequency);
+    const scheduleTimes = labels.map((_, index) => draft.scheduleTimes?.[index] || "");
+    onChange({
+      ...draft,
+      frequency,
+      scheduleTime: scheduleTimes[0] || "",
+      scheduleTimes,
+    });
+  };
+
+  const updateScheduleTime = (index, value) => {
+    const scheduleTimes = [...visibleScheduleTimes];
+    scheduleTimes[index] = value;
+    onChange({
+      ...draft,
+      scheduleTime: scheduleTimes[0] || "",
+      scheduleTimes,
+    });
+  };
+
   return (
     <div className="med-modal-overlay" role="dialog" aria-modal="true" aria-label="Medication editor">
       <form
@@ -224,29 +255,21 @@ function MedicationFormModal({ open, draft, errors, isSaving, isEditing, onChang
         </label>
 
         <label className="med-field">
-          <span>Dosage</span>
+          <span>Pills per dose</span>
           <input
             type="text"
             value={draft.dosage}
             onChange={(event) => onChange({ ...draft, dosage: event.target.value })}
-            placeholder="e.g. 500 mg"
+            placeholder="e.g. 1 pill"
           />
         </label>
 
         <div className="med-field-row">
           <label className="med-field">
-            <span>Time</span>
-            <input
-              type="time"
-              value={draft.scheduleTime}
-              onChange={(event) => onChange({ ...draft, scheduleTime: event.target.value })}
-            />
-          </label>
-          <label className="med-field">
             <span>Frequency</span>
             <select
               value={draft.frequency}
-              onChange={(event) => onChange({ ...draft, frequency: event.target.value })}
+              onChange={(event) => updateFrequency(event.target.value)}
             >
               {FREQUENCY_OPTIONS.map((option) => (
                 <option key={option} value={option}>
@@ -256,6 +279,29 @@ function MedicationFormModal({ open, draft, errors, isSaving, isEditing, onChang
             </select>
           </label>
         </div>
+
+        {timeLabels.length ? (
+          <div className="med-time-grid">
+            {timeLabels.map((label, index) => (
+              <label className="med-field" key={label}>
+                <span>{label}</span>
+                <input
+                  type="time"
+                  value={visibleScheduleTimes[index] || ""}
+                  onChange={(event) => updateScheduleTime(index, event.target.value)}
+                />
+              </label>
+            ))}
+          </div>
+        ) : (
+          <p className="med-time-note">No fixed reminder time is needed for as-needed medication.</p>
+        )}
+        {errors.scheduleTimes ? <small className="med-field-error">{errors.scheduleTimes}</small> : null}
+        {generatedScheduleTimes.length > visibleScheduleTimes.filter(Boolean).length ? (
+          <p className="med-time-note">
+            Scheduled at {generatedScheduleTimes.map(formatScheduleTimeForDisplay).join(", ")}.
+          </p>
+        ) : null}
 
         <label className="med-field">
           <span>Instructions</span>
@@ -352,6 +398,9 @@ export default function MedicationScheduleView() {
         name: medication.name || "",
         dosage: medication.dosage || "",
         scheduleTime: (medication.schedule_time || "").slice(0, 5),
+        scheduleTimes: (medication.schedule_times?.length ? medication.schedule_times : [medication.schedule_time])
+          .filter(Boolean)
+          .map((time) => time.slice(0, 5)),
         frequency: medication.frequency || FREQUENCY_OPTIONS[0],
         instructions: medication.instructions || "",
       },

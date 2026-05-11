@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { signOut } from "../services/authService";
+import {
+  acceptCaregiverInvite,
+  disconnectPatientConnection,
+  declineCaregiverInvite,
+  requestPatientConnection,
+} from "../services/caregiverService";
 import { getCaregiverDashboardData } from "../services/caregiverDashboardService";
 import { supabase } from "../services/supabaseConfig";
 import "../styles/CaregiverDashboardView.css";
@@ -82,6 +88,12 @@ export default function CaregiverDashboardView() {
   const [caregiverName, setCaregiverName] = useState("Caregiver");
   const [patients, setPatients] = useState([]);
   const [alerts, setAlerts] = useState([]);
+  const [pendingInvites, setPendingInvites] = useState([]);
+  const [sentRequests, setSentRequests] = useState([]);
+  const [patientEmail, setPatientEmail] = useState("");
+  const [connectionMessage, setConnectionMessage] = useState("");
+  const [connectionError, setConnectionError] = useState("");
+  const [isSavingConnection, setIsSavingConnection] = useState(false);
   const [summary, setSummary] = useState({ onTrackCount: 0, needsAttentionCount: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -97,6 +109,8 @@ export default function CaregiverDashboardView() {
       setCaregiverName(data.caregiverName);
       setPatients(data.patients);
       setAlerts(data.alerts);
+      setPendingInvites(data.pendingInvites || []);
+      setSentRequests(data.sentRequests || []);
       setSummary({
         onTrackCount: data.onTrackCount,
         needsAttentionCount: data.needsAttentionCount,
@@ -138,9 +152,83 @@ export default function CaregiverDashboardView() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!connectionMessage && !connectionError) return undefined;
+
+    const clearTimer = window.setTimeout(() => {
+      setConnectionMessage("");
+      setConnectionError("");
+    }, 3500);
+
+    return () => window.clearTimeout(clearTimer);
+  }, [connectionMessage, connectionError]);
+
   const handleLogout = async () => {
     await signOut();
     navigate("/", { replace: true });
+  };
+
+  const handlePatientRequest = async (event) => {
+    event.preventDefault();
+    setConnectionMessage("");
+    setConnectionError("");
+    setIsSavingConnection(true);
+
+    try {
+      await requestPatientConnection(patientEmail);
+      setPatientEmail("");
+      setConnectionMessage("Patient request sent. The patient can approve it in Settings.");
+      await loadDashboard();
+    } catch (err) {
+      setConnectionError(err.message || "Unable to request patient access.");
+    } finally {
+      setIsSavingConnection(false);
+    }
+  };
+
+  const handleInviteResponse = async (inviteId, status) => {
+    setConnectionMessage("");
+    setConnectionError("");
+    setIsSavingConnection(true);
+
+    try {
+      if (status === "accepted") {
+        await acceptCaregiverInvite(inviteId);
+      } else {
+        await declineCaregiverInvite(inviteId);
+      }
+
+      setConnectionMessage(status === "accepted" ? "Patient connected." : "Invite declined.");
+      await loadDashboard();
+    } catch (err) {
+      setConnectionError(err.message || "Unable to update the invite.");
+    } finally {
+      setIsSavingConnection(false);
+    }
+  };
+
+  const handleDisconnectPatient = async (patient) => {
+    if (!patient?.connectionId) {
+      setConnectionError("No caregiver connection was found for this patient.");
+      return;
+    }
+
+    const confirmed = window.confirm(`Disconnect from ${patient.name}? You will no longer see their patient data.`);
+    if (!confirmed) return;
+
+    setConnectionMessage("");
+    setConnectionError("");
+    setIsSavingConnection(true);
+
+    try {
+      await disconnectPatientConnection(patient.connectionId);
+      setConnectionMessage(`${patient.name} was disconnected.`);
+      await loadDashboard();
+    } catch (err) {
+      setConnectionError(err.message || "Unable to disconnect this patient.");
+    } finally {
+      setIsSavingConnection(false);
+    }
   };
 
   return (
@@ -247,6 +335,52 @@ export default function CaregiverDashboardView() {
               </div>
             </section>
 
+            {pendingInvites.length || sentRequests.length ? (
+              <section className="care-panel">
+                <div className="care-panel-head">
+                  <h2>Connection Requests</h2>
+                  <span>{pendingInvites.length + sentRequests.length} pending</span>
+                </div>
+                <div className="care-connection-list">
+                  {pendingInvites.map((invite) => (
+                    <article className="care-connection-row" key={invite.id}>
+                      <span className="care-avatar">{invite.initials}</span>
+                      <div>
+                        <strong>{invite.patientName}</strong>
+                        <small>{invite.patientEmail || "Patient invited you"}</small>
+                      </div>
+                      <div className="care-connection-actions">
+                        <button
+                          type="button"
+                          onClick={() => handleInviteResponse(invite.id, "accepted")}
+                          disabled={isSavingConnection}
+                        >
+                          Accept
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleInviteResponse(invite.id, "declined")}
+                          disabled={isSavingConnection}
+                        >
+                          Decline
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                  {sentRequests.map((request) => (
+                    <article className="care-connection-row" key={request.id}>
+                      <span className="care-avatar">{request.initials}</span>
+                      <div>
+                        <strong>{request.patientName}</strong>
+                        <small>{request.patientEmail || "Waiting for patient approval"}</small>
+                      </div>
+                      <em className="care-pill care-pill--muted">Pending</em>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
             <section className="care-panel">
               <div className="care-panel-head">
                 <h2>Recent Alerts</h2>
@@ -271,6 +405,77 @@ export default function CaregiverDashboardView() {
 
         {activeView === "Patients" ? (
           <div className="care-stack">
+            <section className="care-panel">
+              <div className="care-panel-head">
+                <h2>Add a Patient</h2>
+                <span>Patient approval required</span>
+              </div>
+              <form className="care-connection-form" onSubmit={handlePatientRequest}>
+                <label htmlFor="patient-request-email">Patient email</label>
+                <div>
+                  <input
+                    id="patient-request-email"
+                    type="email"
+                    placeholder="patient@example.com"
+                    value={patientEmail}
+                    onChange={(event) => setPatientEmail(event.target.value)}
+                    required
+                  />
+                  <button type="submit" disabled={isSavingConnection}>
+                    {isSavingConnection ? "Sending..." : "Request access"}
+                  </button>
+                </div>
+              </form>
+              {connectionMessage ? <p className="care-success">{connectionMessage}</p> : null}
+              {connectionError ? <p className="care-error" role="alert">{connectionError}</p> : null}
+            </section>
+
+            {pendingInvites.length || sentRequests.length ? (
+              <section className="care-panel">
+                <div className="care-panel-head">
+                  <h2>Pending Connections</h2>
+                  <span>{pendingInvites.length + sentRequests.length} total</span>
+                </div>
+                <div className="care-connection-list">
+                  {pendingInvites.map((invite) => (
+                    <article className="care-connection-row" key={invite.id}>
+                      <span className="care-avatar">{invite.initials}</span>
+                      <div>
+                        <strong>{invite.patientName}</strong>
+                        <small>Invited you to connect</small>
+                      </div>
+                      <div className="care-connection-actions">
+                        <button
+                          type="button"
+                          onClick={() => handleInviteResponse(invite.id, "accepted")}
+                          disabled={isSavingConnection}
+                        >
+                          Accept
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleInviteResponse(invite.id, "declined")}
+                          disabled={isSavingConnection}
+                        >
+                          Decline
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                  {sentRequests.map((request) => (
+                    <article className="care-connection-row" key={request.id}>
+                      <span className="care-avatar">{request.initials}</span>
+                      <div>
+                        <strong>{request.patientName}</strong>
+                        <small>{request.patientEmail || "Waiting for patient approval"}</small>
+                      </div>
+                      <em className="care-pill care-pill--muted">Pending</em>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
             <section className="care-panel">
               <div className="care-panel-head">
                 <h2>Select a Patient</h2>
@@ -305,8 +510,20 @@ export default function CaregiverDashboardView() {
               <section className="care-panel">
                 <div className="care-panel-head">
                   <h2>{selectedPatient.name}</h2>
-                  <em className={`care-pill care-pill--${selectedPatient.tone}`}>{toneLabel(selectedPatient.tone)}</em>
+                  <div className="care-panel-actions">
+                    <em className={`care-pill care-pill--${selectedPatient.tone}`}>{toneLabel(selectedPatient.tone)}</em>
+                    <button
+                      type="button"
+                      className="care-danger-button"
+                      onClick={() => handleDisconnectPatient(selectedPatient)}
+                      disabled={isSavingConnection}
+                    >
+                      Disconnect
+                    </button>
+                  </div>
                 </div>
+                {connectionMessage ? <p className="care-success">{connectionMessage}</p> : null}
+                {connectionError ? <p className="care-error" role="alert">{connectionError}</p> : null}
                 <div className="care-stats">
                   <article className="care-card">
                     <span>Next Dose</span>

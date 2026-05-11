@@ -38,6 +38,30 @@ export async function getCurrentUser() {
   return data.user;
 }
 
+export async function getUserRole(user) {
+  const activeUser = user || (await getCurrentUser());
+
+  if (!activeUser) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", activeUser.id)
+    .maybeSingle();
+
+  if (error) {
+    throw toDatabaseError(error);
+  }
+
+  return data?.role || activeUser.user_metadata?.role || "patient";
+}
+
+export function isCaregiverRole(role) {
+  return role === "caregiver" || role === "family";
+}
+
 export async function signInWithEmail(email, password) {
   const { data, error } = await supabase.auth.signInWithPassword({
     email,

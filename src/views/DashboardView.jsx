@@ -398,7 +398,7 @@ export default function DashboardView() {
         {
           id: "loading-slot-1",
           slotNumber: 1,
-          label: "Box 1",
+          label: "Box 1: Yellow",
           medicationName: "Loading",
           pillCount: 0,
           boxStatusText: "Not connected",
@@ -409,7 +409,7 @@ export default function DashboardView() {
         {
           id: "loading-slot-2",
           slotNumber: 2,
-          label: "Box 2",
+          label: "Box 2: Blue",
           medicationName: "Loading",
           pillCount: 0,
           boxStatusText: "Not connected",
