@@ -43,11 +43,48 @@ function formatAlertTime(value) {
   return date.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
+function pillWord(count) {
+  return Number(count) === 1 ? "pill" : "pills";
+}
+
+function formatPillCount(count) {
+  const value = Number(count);
+
+  if (!Number.isFinite(value)) return "1";
+
+  return Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/, "");
+}
+
+function expectedPillsForMedication(medication) {
+  const dosage = medication?.dosage?.trim();
+
+  if (!dosage) return 1;
+
+  const match = dosage.match(/(\d+(?:[.,]\d+)?)/);
+  const count = match ? Number(match[1].replace(",", ".")) : 1;
+
+  return Number.isFinite(count) && count > 0 ? count : 1;
+}
+
+function pillsTakenForLog(log) {
+  const count = Number(log.pills_difference);
+
+  return Number.isFinite(count) && count > 0 ? count : null;
+}
+
+function isExtraDoseLog(log) {
+  const expected = expectedPillsForMedication(log.medications);
+  const taken = pillsTakenForLog(log);
+
+  return taken !== null && taken > expected;
+}
+
 function formatLastActivity(log, slotsByPatient) {
   const slot = slotsByPatient[0];
 
   if (log) {
     const medicationName = log.medications?.name || "Medication";
+    if (isExtraDoseLog(log)) return `${medicationName} possible overdose - ${formatAlertTime(log.taken_at || log.scheduled_for)}`;
     if (log.status === "missed") return `${medicationName} missed - ${formatAlertTime(log.scheduled_for)}`;
     if (log.status === "taken" || log.taken_at) return `${medicationName} taken - ${formatAlertTime(log.taken_at || log.scheduled_for)}`;
     return `${medicationName} scheduled - ${formatAlertTime(log.scheduled_for)}`;
@@ -67,7 +104,11 @@ function adherenceForLogs(logs) {
   return Math.round((completed / logs.length) * 100);
 }
 
-function patientStatus({ missedToday, lowSlots }) {
+function patientStatus({ extraDoseToday, missedToday, lowSlots }) {
+  if (extraDoseToday.length) {
+    return { status: "Possible overdose", tone: "warn" };
+  }
+
   if (missedToday.length) {
     return { status: "Missed dose", tone: "warn" };
   }
@@ -96,10 +137,13 @@ function buildAlerts({ patientsById, logs, slots }) {
   const since = new Date(Date.now() - MS_PER_DAY);
   const logAlerts = logs
     .filter((log) => new Date(log.updated_at || log.taken_at || log.scheduled_for) >= since)
-    .filter((log) => log.status === "missed" || log.status === "taken" || log.taken_at)
+    .filter((log) => log.status === "missed" || log.status === "taken" || log.taken_at || isExtraDoseLog(log))
     .map((log) => {
       const patient = patientsById[log.user_id];
       const medicationName = log.medications?.name || "medication";
+      const hasExtraDose = isExtraDoseLog(log);
+      const expected = expectedPillsForMedication(log.medications);
+      const taken = pillsTakenForLog(log);
       const alertDate = log.status === "missed" ? log.scheduled_for : log.taken_at || log.updated_at || log.scheduled_for;
 
       return {
@@ -107,10 +151,12 @@ function buildAlerts({ patientsById, logs, slots }) {
         date: alertDate,
         time: formatAlertTime(alertDate),
         label:
-          log.status === "missed"
+          hasExtraDose
+            ? `${patient?.name || "Patient"} took ${formatPillCount(taken)} ${pillWord(taken)} instead of ${formatPillCount(expected)} ${pillWord(expected)} of ${medicationName}`
+            : log.status === "missed"
             ? `${patient?.name || "Patient"} missed ${medicationName}`
             : `${patient?.name || "Patient"} took ${medicationName}`,
-        tone: log.status === "missed" ? "warn" : "success",
+        tone: log.status === "missed" || hasExtraDose ? "warn" : "success",
       };
     });
 
@@ -237,7 +283,7 @@ export async function getCaregiverDashboardData() {
       .eq("active", true),
     supabase
       .from("dose_logs")
-      .select("id,user_id,medication_id,scheduled_for,taken_at,status,updated_at,medications(name)")
+      .select("id,user_id,medication_id,scheduled_for,taken_at,status,updated_at,pills_before,pills_after,pills_difference,medications(name,dosage)")
       .in("user_id", acceptedPatientIds)
       .gte("scheduled_for", sinceThirtyDays)
       .order("scheduled_for", { ascending: false }),
@@ -274,8 +320,11 @@ export async function getCaregiverDashboardData() {
     const missedToday = patientLogs.filter(
       (log) => log.status === "missed" && new Date(log.scheduled_for) >= todayStart
     );
+    const extraDoseToday = patientLogs.filter(
+      (log) => isExtraDoseLog(log) && new Date(log.scheduled_for) >= todayStart
+    );
     const lowSlots = patientSlots.filter((slot) => slot.status === "low" || slot.status === "empty");
-    const status = patientStatus({ missedToday, lowSlots });
+    const status = patientStatus({ extraDoseToday, missedToday, lowSlots });
     const name = profile?.full_name || profile?.email?.split("@")[0] || "Patient";
     const latestLog = [...patientLogs].sort(
       (a, b) => new Date(b.updated_at || b.taken_at || b.scheduled_for) - new Date(a.updated_at || a.taken_at || a.scheduled_for)

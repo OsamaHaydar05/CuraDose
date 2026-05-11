@@ -23,19 +23,19 @@ const fallbackWeeklyProgress = [
 ];
 
 const navItems = ["Home", "Pills", "Profile", "Settings"];
-const DISMISSED_MISSED_DOSE_ALERT_KEY = "curadose-dismissed-missed-dose-alert";
+const DISMISSED_DOSE_ALERT_KEY = "curadose-dismissed-dose-alert";
 
-function readDismissedMissedDoseAlertId() {
+function readDismissedDoseAlertId() {
   try {
-    return window.localStorage.getItem(DISMISSED_MISSED_DOSE_ALERT_KEY) || "";
+    return window.localStorage.getItem(DISMISSED_DOSE_ALERT_KEY) || "";
   } catch {
     return "";
   }
 }
 
-function saveDismissedMissedDoseAlertId(alertId) {
+function saveDismissedDoseAlertId(alertId) {
   try {
-    window.localStorage.setItem(DISMISSED_MISSED_DOSE_ALERT_KEY, alertId);
+    window.localStorage.setItem(DISMISSED_DOSE_ALERT_KEY, alertId);
   } catch {
     // Dismissal is only a convenience; the alert still works without storage.
   }
@@ -232,7 +232,7 @@ export default function DashboardView() {
   const [isUpdatingNotifications, setIsUpdatingNotifications] = useState(false);
   const [notificationState, setNotificationState] = useState(() => getDoseNotificationState());
   const [notificationMessage, setNotificationMessage] = useState("");
-  const [dismissedMissedDoseAlertId, setDismissedMissedDoseAlertId] = useState(readDismissedMissedDoseAlertId);
+  const [dismissedDoseAlertId, setDismissedDoseAlertId] = useState(readDismissedDoseAlertId);
 
   const syncDoseNotifications = async () => {
     const currentState = getDoseNotificationState();
@@ -388,6 +388,7 @@ export default function DashboardView() {
       canTakeDose: false,
     },
     overviewCards: [],
+    extraDoseAlert: null,
     missedDoseAlert: null,
     weeklyProgress: fallbackWeeklyProgress,
     weeklyScore: 0,
@@ -426,10 +427,9 @@ export default function DashboardView() {
     },
   };
 
-  const visibleMissedDoseAlert =
-    data.missedDoseAlert && data.missedDoseAlert.id !== dismissedMissedDoseAlertId
-      ? data.missedDoseAlert
-      : null;
+  const visibleDoseAlert = [data.extraDoseAlert, data.missedDoseAlert].find(
+    (alert) => alert && alert.id !== dismissedDoseAlertId
+  ) || null;
   const dosesCard = overviewCardById(data.overviewCards, "doses");
   const inventoryCard = overviewCardById(data.overviewCards, "inventory");
   const caregiverCard = overviewCardById(data.overviewCards, "caregiver");
@@ -439,11 +439,11 @@ export default function DashboardView() {
   const boxStatus = needsRefill ? "Needs refill" : hasLiveSlots ? "Synced" : "Setup needed";
   const notificationBadge = notificationState.enabled ? "Reminders on" : "Reminders off";
 
-  const handleDismissMissedDoseAlert = () => {
-    if (!visibleMissedDoseAlert?.id) return;
+  const handleDismissDoseAlert = () => {
+    if (!visibleDoseAlert?.id) return;
 
-    saveDismissedMissedDoseAlertId(visibleMissedDoseAlert.id);
-    setDismissedMissedDoseAlertId(visibleMissedDoseAlert.id);
+    saveDismissedDoseAlertId(visibleDoseAlert.id);
+    setDismissedDoseAlertId(visibleDoseAlert.id);
   };
 
   return (
@@ -511,17 +511,17 @@ export default function DashboardView() {
 
         {error ? <p className="patient-error" role="alert">{error}</p> : null}
 
-        {visibleMissedDoseAlert ? (
-          <section className="patient-missed-alert" role="alert" aria-label="Missed dose alert">
+        {visibleDoseAlert ? (
+          <section className="patient-missed-alert" role="alert" aria-label="Dose safety alert">
             <span className="patient-alert-icon">
               <DashboardIcon name="warning" />
             </span>
             <div>
-              <h2>{visibleMissedDoseAlert.title}</h2>
-              <p>{visibleMissedDoseAlert.message}</p>
-              <strong>{visibleMissedDoseAlert.details}</strong>
+              <h2>{visibleDoseAlert.title}</h2>
+              <p>{visibleDoseAlert.message}</p>
+              <strong>{visibleDoseAlert.details}</strong>
             </div>
-            <button type="button" onClick={handleDismissMissedDoseAlert}>Clear</button>
+            <button type="button" onClick={handleDismissDoseAlert}>Clear</button>
           </section>
         ) : null}
 

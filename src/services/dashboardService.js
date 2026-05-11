@@ -57,6 +57,35 @@ function doseTextForMedication(medication) {
   return [formatDosage(medication.dosage), medication.instructions].filter(Boolean).join(" - ");
 }
 
+function pillWord(count) {
+  return Number(count) === 1 ? "pill" : "pills";
+}
+
+function formatPillCount(count) {
+  const value = Number(count);
+
+  if (!Number.isFinite(value)) return "1";
+
+  return Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/, "");
+}
+
+function expectedPillsForMedication(medication) {
+  const dosage = medication?.dosage?.trim();
+
+  if (!dosage) return 1;
+
+  const match = dosage.match(/(\d+(?:[.,]\d+)?)/);
+  const count = match ? Number(match[1].replace(",", ".")) : 1;
+
+  return Number.isFinite(count) && count > 0 ? count : 1;
+}
+
+function pillsTakenForLog(log) {
+  const count = Number(log.pills_difference);
+
+  return Number.isFinite(count) && count > 0 ? count : null;
+}
+
 function missedDoseSummary(logs, medicationsById) {
   if (!logs.length) return null;
 
@@ -78,6 +107,47 @@ function missedDoseSummary(logs, medicationsById) {
       logs.length === 1
         ? "You missed one scheduled dose today."
         : `You missed ${logs.length} scheduled doses today.`,
+    details: details.join(" | "),
+  };
+}
+
+function extraDoseSummary(logs, medicationsById) {
+  const extraLogs = logs.filter((log) => {
+    const medication = medicationsById[log.medication_id];
+    const expected = expectedPillsForMedication(medication);
+    const taken = pillsTakenForLog(log);
+
+    return taken !== null && taken > expected;
+  });
+
+  if (!extraLogs.length) return null;
+
+  const sortedLogs = [...extraLogs].sort((a, b) => {
+    const aDate = new Date(a.taken_at || a.updated_at || a.scheduled_for);
+    const bDate = new Date(b.taken_at || b.updated_at || b.scheduled_for);
+    return bDate - aDate;
+  });
+  const alertId = sortedLogs
+    .map((log) => `extra-${log.id || `${log.medication_id}:${log.scheduled_for}`}:${log.pills_difference}`)
+    .sort()
+    .join("|");
+  const details = sortedLogs.slice(0, 2).map((log) => {
+    const medication = medicationsById[log.medication_id];
+    const medicationName = medication?.name || "Medication";
+    const expected = expectedPillsForMedication(medication);
+    const taken = pillsTakenForLog(log);
+
+    return `${medicationName}: ${formatPillCount(taken)} ${pillWord(taken)} taken, ${formatPillCount(expected)} ${pillWord(expected)} scheduled`;
+  });
+
+  return {
+    id: alertId,
+    count: extraLogs.length,
+    title: extraLogs.length === 1 ? "Possible overdose" : "Possible overdoses",
+    message:
+      extraLogs.length === 1
+        ? "More pills were removed than scheduled for one dose today."
+        : `More pills were removed than scheduled for ${extraLogs.length} doses today.`,
     details: details.join(" | "),
   };
 }
@@ -260,6 +330,7 @@ function buildDashboardData({ user, profile, healthGoals, medications, doseLogs,
   });
   const completedToday = todayLogs.filter((log) => log.status === "taken" || log.taken_at).length;
   const missedTodayLogs = todayLogs.filter((log) => log.status === "missed" && !log.taken_at);
+  const extraDoseAlert = extraDoseSummary(todayLogs, medicationsById);
   const completedDoseCountsToday = todayLogs
     .filter((log) => log.status === "taken" || log.taken_at)
     .reduce((counts, log) => {
@@ -307,6 +378,7 @@ function buildDashboardData({ user, profile, healthGoals, medications, doseLogs,
       avatarInitial: name.trim().charAt(0).toUpperCase() || "C",
     },
     streakDays: calculateStreak(doseLogs),
+    extraDoseAlert,
     missedDoseAlert: missedDoseSummary(missedTodayLogs, medicationsById),
     nextDose: nextMedication
       ? {
@@ -509,7 +581,7 @@ export async function getDashboardData() {
       .order("next_dose_at", { ascending: true, nullsFirst: false }),
     supabase
       .from("dose_logs")
-      .select("id,medication_id,scheduled_for,taken_at,status")
+      .select("id,medication_id,scheduled_for,taken_at,status,updated_at,pills_before,pills_after,pills_difference")
       .eq("user_id", user.id)
       .gte("scheduled_for", weekStart.toISOString())
       .lte("scheduled_for", weekEnd.toISOString())

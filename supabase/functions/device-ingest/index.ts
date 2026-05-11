@@ -92,7 +92,7 @@ Deno.serve(async (request) => {
 
     const { data: slot, error: slotError } = await supabase
       .from("device_slots")
-      .select("id,user_id,medication_id,current_pill_count")
+      .select("id,user_id,medication_id,current_weight_grams,current_pill_count")
       .eq("device_id", deviceId)
       .eq("slot_number", slotNumber)
       .maybeSingle();
@@ -103,6 +103,10 @@ Deno.serve(async (request) => {
     }
 
     const eventType = determineEventType(payload, slot.current_pill_count ?? pillCount);
+    const previousPillCount = slot.current_pill_count ?? pillCount;
+    const previousWeightGrams = slot.current_weight_grams ?? weightGrams;
+    const pillsDifference = Math.max(0, previousPillCount - pillCount);
+    const weightDifferenceGrams = Math.max(0, previousWeightGrams - weightGrams);
 
     const { error: readingError } = await supabase.from("device_readings").insert({
       device_id: deviceId,
@@ -183,6 +187,12 @@ Deno.serve(async (request) => {
           .update({
             status: "taken",
             taken_at: timestamp,
+            weight_before_grams: previousWeightGrams,
+            weight_after_grams: weightGrams,
+            weight_difference_grams: weightDifferenceGrams,
+            pills_before: previousPillCount,
+            pills_after: pillCount,
+            pills_difference: pillsDifference,
             updated_at: timestamp,
           })
           .eq("id", doseLog.id);
@@ -195,6 +205,12 @@ Deno.serve(async (request) => {
           scheduled_for: timestamp,
           status: "taken",
           taken_at: timestamp,
+          weight_before_grams: previousWeightGrams,
+          weight_after_grams: weightGrams,
+          weight_difference_grams: weightDifferenceGrams,
+          pills_before: previousPillCount,
+          pills_after: pillCount,
+          pills_difference: pillsDifference,
         });
 
         if (insertDoseError) throw insertDoseError;

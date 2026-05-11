@@ -44,9 +44,22 @@ create table if not exists public.dose_logs (
   scheduled_for timestamptz not null,
   taken_at timestamptz,
   status text not null default 'scheduled' check (status in ('scheduled', 'taken', 'missed', 'skipped')),
+  weight_before_grams numeric(8, 2),
+  weight_after_grams numeric(8, 2),
+  weight_difference_grams numeric(8, 2),
+  pills_before integer check (pills_before is null or pills_before >= 0),
+  pills_after integer check (pills_after is null or pills_after >= 0),
+  pills_difference integer check (pills_difference is null or pills_difference >= 0),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.dose_logs add column if not exists weight_before_grams numeric(8, 2);
+alter table public.dose_logs add column if not exists weight_after_grams numeric(8, 2);
+alter table public.dose_logs add column if not exists weight_difference_grams numeric(8, 2);
+alter table public.dose_logs add column if not exists pills_before integer;
+alter table public.dose_logs add column if not exists pills_after integer;
+alter table public.dose_logs add column if not exists pills_difference integer;
 
 create table if not exists public.caregiver_invites (
   id bigint generated always as identity primary key,
