@@ -176,6 +176,14 @@ export default function LoginView({ theme = "system", setTheme }) {
               </div>
             </div>
             <div className="lp-navbar-actions">
+              <button
+                className="btn-outline lp-btn-nav lp-btn-nav-outline"
+                type="button"
+                onClick={() => navigate("/product")}
+              >
+                About CuraDose
+              </button>
+
               <div className="lp-nav-dropdown">
                 <button className="btn-outline lp-btn-nav lp-btn-nav-outline" type="button">
                   Log In

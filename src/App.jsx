@@ -8,6 +8,7 @@ import CaregiverView from "./views/CaregiverView";
 import MedicationScheduleView from "./views/MedicationScheduleView";
 import ProfileView from "./views/ProfileView";
 import SettingsView from "./views/SettingsView";
+import ProductPageView from "./views/ProductPageView";
 import { getCurrentSession, getUserRole, isCaregiverRole } from "./services/authService";
 
 const THEME_STORAGE_KEY = "curadose-theme";
@@ -135,6 +136,7 @@ export default function App() {
         <Route path="/create-account" element={<LoginView theme={theme} setTheme={setTheme} />} />
         <Route path="/caregiver/login" element={<LoginView theme={theme} setTheme={setTheme} />} />
         <Route path="/caregiver/signup" element={<LoginView theme={theme} setTheme={setTheme} />} />
+        <Route path="/product" element={<ProductPageView theme={theme} setTheme={setTheme} />} />
         <Route path="/create-account/health-goals" element={<HealthGoalsView />} />
         <Route path="/create-account/caregiver" element={<CaregiverView />} />
         <Route
