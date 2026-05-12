@@ -406,10 +406,11 @@ export default function DashboardView() {
     },
   };
 
-  const currentDoseAlertDismissalId = [data.extraDoseAlert?.id, data.missedDoseAlert?.id].filter(Boolean).join("|");
+  const activeDoseAlert = data.missedDoseAlert || data.extraDoseAlert;
+  const currentDoseAlertDismissalId = activeDoseAlert?.id || "";
   const visibleDoseAlert =
     currentDoseAlertDismissalId && currentDoseAlertDismissalId !== dismissedDoseAlertId
-      ? data.extraDoseAlert || data.missedDoseAlert
+      ? activeDoseAlert
       : null;
   const dosesCard = overviewCardById(data.overviewCards, "doses");
   const inventoryCard = overviewCardById(data.overviewCards, "inventory");

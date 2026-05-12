@@ -3,6 +3,7 @@ import { supabase } from "./supabaseConfig";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const DUE_GRACE_MS = MS_PER_DAY;
+const MISSED_DOSE_GRACE_MS = 30 * 1000;
 
 function startOfDay(date) {
   const value = new Date(date);
@@ -94,6 +95,17 @@ function isMissedDoseLog(log) {
   return log?.status === "missed" && !log.taken_at;
 }
 
+function wasTakenAfterMissedWindow(log) {
+  if (!log?.taken_at || !log?.scheduled_for) return false;
+
+  const takenAt = new Date(log.taken_at).getTime();
+  const scheduledFor = new Date(log.scheduled_for).getTime();
+
+  if (!Number.isFinite(takenAt) || !Number.isFinite(scheduledFor)) return false;
+
+  return takenAt - scheduledFor > MISSED_DOSE_GRACE_MS;
+}
+
 function missedDoseSummary(logs, medicationsById) {
   if (!logs.length) return null;
 
@@ -112,6 +124,7 @@ function missedDoseSummary(logs, medicationsById) {
 function extraDoseSummary(logs, medicationsById) {
   const extraLogs = logs.filter((log) => {
     if (!isTakenDoseLog(log)) return false;
+    if (wasTakenAfterMissedWindow(log)) return false;
 
     const medication = medicationsById[log.medication_id];
     const expected = expectedPillsForMedication(medication);

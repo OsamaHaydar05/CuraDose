@@ -2,6 +2,7 @@ import { toDatabaseError } from "./databaseErrors";
 import { supabase } from "./supabaseConfig";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const MISSED_DOSE_GRACE_MS = 30 * 1000;
 
 function startOfDay(date) {
   const value = new Date(date);
@@ -74,6 +75,7 @@ function pillsTakenForLog(log) {
 
 function isExtraDoseLog(log) {
   if (!isTakenDoseLog(log)) return false;
+  if (wasTakenAfterMissedWindow(log)) return false;
 
   const expected = expectedPillsForMedication(log.medications);
   const taken = pillsTakenForLog(log);
@@ -87,6 +89,17 @@ function isTakenDoseLog(log) {
 
 function isMissedDoseLog(log) {
   return log?.status === "missed" && !log.taken_at;
+}
+
+function wasTakenAfterMissedWindow(log) {
+  if (!log?.taken_at || !log?.scheduled_for) return false;
+
+  const takenAt = new Date(log.taken_at).getTime();
+  const scheduledFor = new Date(log.scheduled_for).getTime();
+
+  if (!Number.isFinite(takenAt) || !Number.isFinite(scheduledFor)) return false;
+
+  return takenAt - scheduledFor > MISSED_DOSE_GRACE_MS;
 }
 
 function formatLastActivity(log, slotsByPatient) {
