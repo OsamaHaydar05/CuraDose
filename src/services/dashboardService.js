@@ -3,7 +3,6 @@ import { supabase } from "./supabaseConfig";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const DUE_GRACE_MS = MS_PER_DAY;
-const MISSED_DOSE_GRACE_MS = 30 * 1000;
 
 function startOfDay(date) {
   const value = new Date(date);
@@ -95,36 +94,28 @@ function isMissedDoseLog(log) {
   return log?.status === "missed" && !log.taken_at;
 }
 
-function wasTakenAfterMissedWindow(log) {
-  if (!log?.taken_at || !log?.scheduled_for) return false;
-
-  const takenAt = new Date(log.taken_at).getTime();
-  const scheduledFor = new Date(log.scheduled_for).getTime();
-
-  if (!Number.isFinite(takenAt) || !Number.isFinite(scheduledFor)) return false;
-
-  return takenAt - scheduledFor > MISSED_DOSE_GRACE_MS;
-}
-
-function missedDoseSummary(logs, medicationsById) {
-  if (!logs.length) return null;
-
-  const latestLog = [...logs].sort((a, b) => new Date(b.scheduled_for) - new Date(a.scheduled_for))[0];
-  const medicationName = medicationsById[latestLog.medication_id]?.name || "Medication";
+function missedDoseAlertForLog(log, medicationsById) {
+  const medicationName = medicationsById[log.medication_id]?.name || "Medication";
 
   return {
-    id: `missed-${latestLog.id || `${latestLog.medication_id}:${latestLog.scheduled_for}`}`,
+    id: `missed-${log.id || `${log.medication_id}:${log.scheduled_for}`}`,
     count: 1,
     title: "Missed dose",
     message: "You missed a scheduled dose today.",
-    details: `${medicationName} at ${formatDoseTime(latestLog.scheduled_for)}`,
+    details: `${medicationName} at ${formatDoseTime(log.scheduled_for)}`,
+    date: log.scheduled_for,
   };
 }
 
-function extraDoseSummary(logs, medicationsById) {
+function missedDoseAlerts(logs, medicationsById) {
+  return [...logs]
+    .sort((a, b) => new Date(b.scheduled_for) - new Date(a.scheduled_for))
+    .map((log) => missedDoseAlertForLog(log, medicationsById));
+}
+
+function extraDoseAlerts(logs, medicationsById) {
   const extraLogs = logs.filter((log) => {
     if (!isTakenDoseLog(log)) return false;
-    if (wasTakenAfterMissedWindow(log)) return false;
 
     const medication = medicationsById[log.medication_id];
     const expected = expectedPillsForMedication(medication);
@@ -133,25 +124,25 @@ function extraDoseSummary(logs, medicationsById) {
     return taken !== null && taken > expected;
   });
 
-  if (!extraLogs.length) return null;
-
-  const latestLog = [...extraLogs].sort((a, b) => {
+  return [...extraLogs].sort((a, b) => {
     const aDate = new Date(a.taken_at || a.updated_at || a.scheduled_for);
     const bDate = new Date(b.taken_at || b.updated_at || b.scheduled_for);
     return bDate - aDate;
-  })[0];
-  const medication = medicationsById[latestLog.medication_id];
-  const medicationName = medication?.name || "Medication";
-  const expected = expectedPillsForMedication(medication);
-  const taken = pillsTakenForLog(latestLog);
+  }).map((log) => {
+    const medication = medicationsById[log.medication_id];
+    const medicationName = medication?.name || "Medication";
+    const expected = expectedPillsForMedication(medication);
+    const taken = pillsTakenForLog(log);
 
-  return {
-    id: `extra-${latestLog.id || `${latestLog.medication_id}:${latestLog.scheduled_for}`}`,
-    count: 1,
-    title: "Possible overdose",
-    message: "More pills were removed than scheduled for this dose.",
-    details: `${medicationName}: ${formatPillCount(taken)} ${pillWord(taken)} taken, ${formatPillCount(expected)} ${pillWord(expected)} scheduled`,
-  };
+    return {
+      id: `extra-${log.id || `${log.medication_id}:${log.scheduled_for}`}`,
+      count: 1,
+      title: "Possible overdose",
+      message: "More pills were removed than scheduled for this dose.",
+      details: `${medicationName}: ${formatPillCount(taken)} ${pillWord(taken)} taken, ${formatPillCount(expected)} ${pillWord(expected)} scheduled`,
+      date: log.taken_at || log.updated_at || log.scheduled_for,
+    };
+  });
 }
 
 function isDoseDue(value, now = new Date()) {
@@ -343,7 +334,12 @@ function buildDashboardData({ user, profile, healthGoals, medications, doseLogs,
   });
   const completedToday = todayLogs.filter(isTakenDoseLog).length;
   const missedTodayLogs = todayLogs.filter(isMissedDoseLog);
-  const extraDoseAlert = extraDoseSummary(todayLogs, medicationsById);
+  const missedDoseAlertList = missedDoseAlerts(missedTodayLogs, medicationsById);
+  const extraDoseAlertList = extraDoseAlerts(todayLogs, medicationsById);
+  const doseAlerts = [...missedDoseAlertList, ...extraDoseAlertList]
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
+  const missedDoseAlert = missedDoseAlertList[0] || null;
+  const extraDoseAlert = extraDoseAlertList[0] || null;
   const completedDoseCountsToday = todayLogs
     .filter(isTakenDoseLog)
     .reduce((counts, log) => {
@@ -392,8 +388,9 @@ function buildDashboardData({ user, profile, healthGoals, medications, doseLogs,
       avatarInitial: name.trim().charAt(0).toUpperCase() || "C",
     },
     streakDays: calculateStreak(doseLogs),
+    doseAlerts,
     extraDoseAlert,
-    missedDoseAlert: missedDoseSummary(missedTodayLogs, medicationsById),
+    missedDoseAlert,
     nextDose: nextMedication
       ? {
           doseLogId: upcomingLog?.id || null,

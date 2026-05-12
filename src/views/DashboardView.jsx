@@ -25,17 +25,22 @@ const fallbackWeeklyProgress = [
 const navItems = ["Home", "Pills", "Profile", "Settings"];
 const DISMISSED_DOSE_ALERT_KEY = "curadose-dismissed-dose-alert";
 
-function readDismissedDoseAlertId() {
+function readDismissedDoseAlertIds() {
   try {
-    return window.localStorage.getItem(DISMISSED_DOSE_ALERT_KEY) || "";
+    const storedValue = window.localStorage.getItem(DISMISSED_DOSE_ALERT_KEY);
+    if (!storedValue) return [];
+
+    const parsedValue = JSON.parse(storedValue);
+    return Array.isArray(parsedValue) ? parsedValue.filter(Boolean) : [storedValue];
   } catch {
-    return "";
+    const storedValue = window.localStorage.getItem(DISMISSED_DOSE_ALERT_KEY);
+    return storedValue ? [storedValue] : [];
   }
 }
 
-function saveDismissedDoseAlertId(alertId) {
+function saveDismissedDoseAlertIds(alertIds) {
   try {
-    window.localStorage.setItem(DISMISSED_DOSE_ALERT_KEY, alertId);
+    window.localStorage.setItem(DISMISSED_DOSE_ALERT_KEY, JSON.stringify(alertIds));
   } catch {
     // Dismissal is only a convenience; the alert still works without storage.
   }
@@ -231,7 +236,7 @@ export default function DashboardView() {
   const [isUpdatingNotifications, setIsUpdatingNotifications] = useState(false);
   const [notificationState, setNotificationState] = useState(() => getDoseNotificationState());
   const [notificationMessage, setNotificationMessage] = useState("");
-  const [dismissedDoseAlertId, setDismissedDoseAlertId] = useState(readDismissedDoseAlertId);
+  const [dismissedDoseAlertIds, setDismissedDoseAlertIds] = useState(readDismissedDoseAlertIds);
 
   const syncDoseNotifications = async () => {
     const currentState = getDoseNotificationState();
@@ -369,6 +374,7 @@ export default function DashboardView() {
     overviewCards: [],
     extraDoseAlert: null,
     missedDoseAlert: null,
+    doseAlerts: [],
     weeklyProgress: fallbackWeeklyProgress,
     weeklyScore: 0,
     deviceStatus: {
@@ -406,12 +412,10 @@ export default function DashboardView() {
     },
   };
 
-  const activeDoseAlert = data.missedDoseAlert || data.extraDoseAlert;
-  const currentDoseAlertDismissalId = activeDoseAlert?.id || "";
-  const visibleDoseAlert =
-    currentDoseAlertDismissalId && currentDoseAlertDismissalId !== dismissedDoseAlertId
-      ? activeDoseAlert
-      : null;
+  const activeDoseAlerts = data.doseAlerts?.length
+    ? data.doseAlerts
+    : [data.missedDoseAlert, data.extraDoseAlert].filter(Boolean);
+  const visibleDoseAlerts = activeDoseAlerts.filter((alert) => !dismissedDoseAlertIds.includes(alert.id));
   const dosesCard = overviewCardById(data.overviewCards, "doses");
   const inventoryCard = overviewCardById(data.overviewCards, "inventory");
   const caregiverCard = overviewCardById(data.overviewCards, "caregiver");
@@ -421,11 +425,12 @@ export default function DashboardView() {
   const boxStatus = needsRefill ? "Needs refill" : hasLiveSlots ? "Synced" : "Setup needed";
   const notificationBadge = notificationState.enabled ? "Reminders on" : "Reminders off";
 
-  const handleDismissDoseAlert = () => {
-    if (!visibleDoseAlert?.id) return;
+  const handleDismissDoseAlert = (alertId) => {
+    if (!alertId) return;
 
-    saveDismissedDoseAlertId(currentDoseAlertDismissalId);
-    setDismissedDoseAlertId(currentDoseAlertDismissalId);
+    const nextDismissedIds = [...new Set([...dismissedDoseAlertIds, alertId])];
+    saveDismissedDoseAlertIds(nextDismissedIds);
+    setDismissedDoseAlertIds(nextDismissedIds);
   };
 
   return (
@@ -493,19 +498,19 @@ export default function DashboardView() {
 
         {error ? <p className="patient-error" role="alert">{error}</p> : null}
 
-        {visibleDoseAlert ? (
-          <section className="patient-missed-alert" role="alert" aria-label="Dose safety alert">
+        {visibleDoseAlerts.map((alert) => (
+          <section className="patient-missed-alert" role="alert" aria-label="Dose safety alert" key={alert.id}>
             <span className="patient-alert-icon">
               <DashboardIcon name="warning" />
             </span>
             <div>
-              <h2>{visibleDoseAlert.title}</h2>
-              <p>{visibleDoseAlert.message}</p>
-              <strong>{visibleDoseAlert.details}</strong>
+              <h2>{alert.title}</h2>
+              <p>{alert.message}</p>
+              <strong>{alert.details}</strong>
             </div>
-            <button type="button" onClick={handleDismissDoseAlert}>Clear</button>
+            <button type="button" onClick={() => handleDismissDoseAlert(alert.id)}>Clear</button>
           </section>
-        ) : null}
+        ))}
 
         {activeView === "Home" ? (
           <div className="patient-stack">
