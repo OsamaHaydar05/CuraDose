@@ -79,14 +79,22 @@ function isExtraDoseLog(log) {
   return taken !== null && taken > expected;
 }
 
+function isTakenDoseLog(log) {
+  return log.status === "taken" || Boolean(log.taken_at);
+}
+
+function isMissedDoseLog(log) {
+  return log.status === "missed" && !log.taken_at;
+}
+
 function formatLastActivity(log, slotsByPatient) {
   const slot = slotsByPatient[0];
 
   if (log) {
     const medicationName = log.medications?.name || "Medication";
     if (isExtraDoseLog(log)) return `${medicationName} possible overdose - ${formatAlertTime(log.taken_at || log.scheduled_for)}`;
-    if (log.status === "missed") return `${medicationName} missed - ${formatAlertTime(log.scheduled_for)}`;
-    if (log.status === "taken" || log.taken_at) return `${medicationName} taken - ${formatAlertTime(log.taken_at || log.scheduled_for)}`;
+    if (isTakenDoseLog(log)) return `${medicationName} taken - ${formatAlertTime(log.taken_at || log.scheduled_for)}`;
+    if (isMissedDoseLog(log)) return `${medicationName} missed - ${formatAlertTime(log.scheduled_for)}`;
     return `${medicationName} scheduled - ${formatAlertTime(log.scheduled_for)}`;
   }
 
@@ -100,7 +108,7 @@ function formatLastActivity(log, slotsByPatient) {
 function adherenceForLogs(logs) {
   if (!logs.length) return 0;
 
-  const completed = logs.filter((log) => log.status === "taken" || log.taken_at).length;
+  const completed = logs.filter(isTakenDoseLog).length;
   return Math.round((completed / logs.length) * 100);
 }
 
@@ -164,14 +172,15 @@ function buildAlerts({ patientsById, logs, slots }) {
   const since = new Date(Date.now() - MS_PER_DAY);
   const logAlerts = logs
     .filter((log) => new Date(log.updated_at || log.taken_at || log.scheduled_for) >= since)
-    .filter((log) => log.status === "missed" || log.status === "taken" || log.taken_at || isExtraDoseLog(log))
+    .filter((log) => isMissedDoseLog(log) || isTakenDoseLog(log) || isExtraDoseLog(log))
     .map((log) => {
       const patient = patientsById[log.user_id];
       const medicationName = log.medications?.name || "medication";
       const hasExtraDose = isExtraDoseLog(log);
+      const isMissedDose = isMissedDoseLog(log);
       const expected = expectedPillsForMedication(log.medications);
       const taken = pillsTakenForLog(log);
-      const alertDate = log.status === "missed" ? log.scheduled_for : log.taken_at || log.updated_at || log.scheduled_for;
+      const alertDate = isMissedDose ? log.scheduled_for : log.taken_at || log.updated_at || log.scheduled_for;
 
       return {
         id: `log-${log.id}`,
@@ -180,10 +189,10 @@ function buildAlerts({ patientsById, logs, slots }) {
         label:
           hasExtraDose
             ? `${patient?.name || "Patient"} took ${formatPillCount(taken)} ${pillWord(taken)} instead of ${formatPillCount(expected)} ${pillWord(expected)} of ${medicationName}`
-            : log.status === "missed"
+            : isMissedDose
             ? `${patient?.name || "Patient"} missed ${medicationName}`
             : `${patient?.name || "Patient"} took ${medicationName}`,
-        tone: log.status === "missed" || hasExtraDose ? "warn" : "success",
+        tone: isMissedDose || hasExtraDose ? "warn" : "success",
       };
     });
 
@@ -345,7 +354,7 @@ export async function getCaregiverDashboardData() {
     const patientSlots = slots.filter((slot) => slot.user_id === patientId);
     const acceptedInvite = acceptedInvites.find((invite) => invite.patient_id === patientId);
     const missedToday = patientLogs.filter(
-      (log) => log.status === "missed" && new Date(log.scheduled_for) >= todayStart
+      (log) => isMissedDoseLog(log) && new Date(log.scheduled_for) >= todayStart
     );
     const extraDoseToday = patientLogs.filter(
       (log) => isExtraDoseLog(log) && new Date(log.scheduled_for) >= todayStart

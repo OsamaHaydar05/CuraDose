@@ -47,6 +47,47 @@ function slotStatus(pillCount: number) {
   return "ready";
 }
 
+async function findOpenDoseLog(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  medicationId: number,
+  timestamp: string,
+) {
+  const now = new Date(timestamp);
+  const dayStart = new Date(now);
+  dayStart.setHours(0, 0, 0, 0);
+  const dayEnd = new Date(now);
+  dayEnd.setHours(23, 59, 59, 999);
+
+  const baseQuery = () =>
+    supabase
+      .from("dose_logs")
+      .select("id,status,scheduled_for")
+      .eq("user_id", userId)
+      .eq("medication_id", medicationId)
+      .is("taken_at", null)
+      .in("status", ["scheduled", "missed"])
+      .gte("scheduled_for", dayStart.toISOString())
+      .lte("scheduled_for", dayEnd.toISOString())
+      .limit(1);
+
+  const { data: overdueDoseLog, error: overdueDoseLogError } = await baseQuery()
+    .lte("scheduled_for", timestamp)
+    .order("scheduled_for", { ascending: false })
+    .maybeSingle();
+
+  if (overdueDoseLogError) throw overdueDoseLogError;
+  if (overdueDoseLog) return overdueDoseLog;
+
+  const { data: nextDoseLog, error: nextDoseLogError } = await baseQuery()
+    .gte("scheduled_for", timestamp)
+    .order("scheduled_for", { ascending: true })
+    .maybeSingle();
+
+  if (nextDoseLogError) throw nextDoseLogError;
+  return nextDoseLog;
+}
+
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -161,25 +202,7 @@ Deno.serve(async (request) => {
     }
 
     if (eventType === "dose_taken" && slot.medication_id) {
-      const now = new Date(timestamp);
-      const dayStart = new Date(now);
-      dayStart.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(now);
-      dayEnd.setHours(23, 59, 59, 999);
-
-      const { data: doseLog, error: doseLogError } = await supabase
-        .from("dose_logs")
-        .select("id")
-        .eq("user_id", slot.user_id)
-        .eq("medication_id", slot.medication_id)
-        .eq("status", "scheduled")
-        .gte("scheduled_for", dayStart.toISOString())
-        .lte("scheduled_for", dayEnd.toISOString())
-        .order("scheduled_for", { ascending: true })
-        .limit(1)
-        .maybeSingle();
-
-      if (doseLogError) throw doseLogError;
+      const doseLog = await findOpenDoseLog(supabase, slot.user_id, slot.medication_id, timestamp);
 
       if (doseLog) {
         const { error: updateDoseError } = await supabase
