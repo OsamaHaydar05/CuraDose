@@ -101,8 +101,10 @@ export default function CaregiverDashboardView() {
   const onTrackCount = summary.onTrackCount;
   const needsAttentionCount = summary.needsAttentionCount;
 
-  const loadDashboard = async () => {
-    setError("");
+  const loadDashboard = async ({ silent = false } = {}) => {
+    if (!silent) {
+      setError("");
+    }
 
     try {
       const data = await getCaregiverDashboardData();
@@ -120,7 +122,9 @@ export default function CaregiverDashboardView() {
         return data.patients[0]?.id || null;
       });
     } catch (err) {
-      setError(err.message || "Unable to load caregiver dashboard.");
+      if (!silent) {
+        setError(err.message || "Unable to load caregiver dashboard.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -131,12 +135,17 @@ export default function CaregiverDashboardView() {
 
     const refreshDashboard = () => {
       window.clearTimeout(refreshTimer);
-      refreshTimer = window.setTimeout(loadDashboard, 250);
+      refreshTimer = window.setTimeout(() => loadDashboard({ silent: true }), 250);
     };
 
     loadDashboard();
 
-    const refreshInterval = window.setInterval(loadDashboard, 15 * 1000);
+    const refreshInterval = window.setInterval(refreshDashboard, 2000);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        refreshDashboard();
+      }
+    };
     const channel = supabase
       .channel("caregiver-dashboard-live-sync")
       .on("postgres_changes", { event: "*", schema: "public", table: "caregiver_invites" }, refreshDashboard)
@@ -145,9 +154,14 @@ export default function CaregiverDashboardView() {
       .on("postgres_changes", { event: "*", schema: "public", table: "medications" }, refreshDashboard)
       .subscribe();
 
+    window.addEventListener("focus", refreshDashboard);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
     return () => {
       window.clearTimeout(refreshTimer);
       window.clearInterval(refreshInterval);
+      window.removeEventListener("focus", refreshDashboard);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
       supabase.removeChannel(channel);
     };
   }, []);

@@ -260,16 +260,19 @@ export default function DashboardView() {
     }
   };
 
-  const loadDashboard = async () => {
-    setError("");
-    setIsLoading(true);
+  const loadDashboard = async ({ silent = false } = {}) => {
+    if (!silent) {
+      setError("");
+      setIsLoading(true);
+    }
 
     try {
       const data = await getDashboardData();
       setDashboardData(data);
-      await syncDoseNotifications();
     } catch (err) {
-      setError(err.message || "Unable to load dashboard.");
+      if (!silent) {
+        setError(err.message || "Unable to load dashboard.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -283,7 +286,7 @@ export default function DashboardView() {
       if (!isMounted) return;
       window.clearTimeout(refreshTimer);
       refreshTimer = window.setTimeout(() => {
-        loadDashboard();
+        loadDashboard({ silent: true });
       }, 250);
     };
 
@@ -291,18 +294,28 @@ export default function DashboardView() {
     syncDoseNotifications();
 
     const reminderSync = window.setInterval(syncDoseNotifications, 60 * 1000);
-    const dashboardSync = window.setInterval(loadDashboard, 10 * 1000);
+    const dashboardSync = window.setInterval(refreshDashboard, 2000);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        refreshDashboard();
+      }
+    };
     const dashboardChannel = supabase
       .channel("dashboard-live-sync")
       .on("postgres_changes", { event: "*", schema: "public", table: "device_slots" }, refreshDashboard)
       .on("postgres_changes", { event: "*", schema: "public", table: "dose_logs" }, refreshDashboard)
       .subscribe();
 
+    window.addEventListener("focus", refreshDashboard);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
     return () => {
       isMounted = false;
       window.clearTimeout(refreshTimer);
       window.clearInterval(reminderSync);
       window.clearInterval(dashboardSync);
+      window.removeEventListener("focus", refreshDashboard);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
       supabase.removeChannel(dashboardChannel);
       clearDoseNotificationTimers();
     };
