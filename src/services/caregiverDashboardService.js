@@ -73,6 +73,8 @@ function pillsTakenForLog(log) {
 }
 
 function isExtraDoseLog(log) {
+  if (!isTakenDoseLog(log)) return false;
+
   const expected = expectedPillsForMedication(log.medications);
   const taken = pillsTakenForLog(log);
 
@@ -80,11 +82,11 @@ function isExtraDoseLog(log) {
 }
 
 function isTakenDoseLog(log) {
-  return log.status === "taken" || Boolean(log.taken_at);
+  return log?.status === "taken" || Boolean(log?.taken_at);
 }
 
 function isMissedDoseLog(log) {
-  return log.status === "missed" && !log.taken_at;
+  return log?.status === "missed" && !log.taken_at;
 }
 
 function formatLastActivity(log, slotsByPatient) {
@@ -92,9 +94,9 @@ function formatLastActivity(log, slotsByPatient) {
 
   if (log) {
     const medicationName = log.medications?.name || "Medication";
+    if (isMissedDoseLog(log)) return `${medicationName} missed - ${formatAlertTime(log.scheduled_for)}`;
     if (isExtraDoseLog(log)) return `${medicationName} possible overdose - ${formatAlertTime(log.taken_at || log.scheduled_for)}`;
     if (isTakenDoseLog(log)) return `${medicationName} taken - ${formatAlertTime(log.taken_at || log.scheduled_for)}`;
-    if (isMissedDoseLog(log)) return `${medicationName} missed - ${formatAlertTime(log.scheduled_for)}`;
     return `${medicationName} scheduled - ${formatAlertTime(log.scheduled_for)}`;
   }
 
@@ -113,12 +115,12 @@ function adherenceForLogs(logs) {
 }
 
 function patientStatus({ extraDoseToday, missedToday, lowSlots }) {
-  if (extraDoseToday.length) {
-    return { status: "Possible overdose", tone: "warn" };
-  }
-
   if (missedToday.length) {
     return { status: "Missed dose", tone: "warn" };
+  }
+
+  if (extraDoseToday.length) {
+    return { status: "Possible overdose", tone: "warn" };
   }
 
   if (lowSlots.length) {
@@ -187,10 +189,10 @@ function buildAlerts({ patientsById, logs, slots }) {
         date: alertDate,
         time: formatAlertTime(alertDate),
         label:
-          hasExtraDose
-            ? `${patient?.name || "Patient"} took ${formatPillCount(taken)} ${pillWord(taken)} instead of ${formatPillCount(expected)} ${pillWord(expected)} of ${medicationName}`
-            : isMissedDose
+          isMissedDose
             ? `${patient?.name || "Patient"} missed ${medicationName}`
+            : hasExtraDose
+            ? `${patient?.name || "Patient"} took ${formatPillCount(taken)} ${pillWord(taken)} instead of ${formatPillCount(expected)} ${pillWord(expected)} of ${medicationName}`
             : `${patient?.name || "Patient"} took ${medicationName}`,
         tone: isMissedDose || hasExtraDose ? "warn" : "success",
       };

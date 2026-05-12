@@ -86,6 +86,14 @@ function pillsTakenForLog(log) {
   return Number.isFinite(count) && count > 0 ? count : null;
 }
 
+function isTakenDoseLog(log) {
+  return log?.status === "taken" || Boolean(log?.taken_at);
+}
+
+function isMissedDoseLog(log) {
+  return log?.status === "missed" && !log.taken_at;
+}
+
 function missedDoseSummary(logs, medicationsById) {
   if (!logs.length) return null;
 
@@ -103,6 +111,8 @@ function missedDoseSummary(logs, medicationsById) {
 
 function extraDoseSummary(logs, medicationsById) {
   const extraLogs = logs.filter((log) => {
+    if (!isTakenDoseLog(log)) return false;
+
     const medication = medicationsById[log.medication_id];
     const expected = expectedPillsForMedication(medication);
     const taken = pillsTakenForLog(log);
@@ -123,7 +133,7 @@ function extraDoseSummary(logs, medicationsById) {
   const taken = pillsTakenForLog(latestLog);
 
   return {
-    id: `extra-${latestLog.id || `${latestLog.medication_id}:${latestLog.scheduled_for}`}:${latestLog.pills_difference}`,
+    id: `extra-${latestLog.id || `${latestLog.medication_id}:${latestLog.scheduled_for}`}`,
     count: 1,
     title: "Possible overdose",
     message: "More pills were removed than scheduled for this dose.",
@@ -214,7 +224,7 @@ function buildWeek(logs, weekStart) {
     const date = new Date(weekStart.getTime() + index * MS_PER_DAY);
     const key = dayKey(date);
     const dayLogs = logs.filter((log) => dayKey(log.scheduled_for) === key);
-    const completed = dayLogs.filter((log) => log.status === "taken" || log.taken_at).length;
+    const completed = dayLogs.filter(isTakenDoseLog).length;
     const total = dayLogs.length;
 
     return {
@@ -241,7 +251,7 @@ function calculateStreak(logs) {
       break;
     }
 
-    const completed = dayLogs.every((log) => log.status === "taken" || log.taken_at);
+    const completed = dayLogs.every(isTakenDoseLog);
 
     if (!completed) {
       break;
@@ -259,7 +269,7 @@ function doseStatusLabel(todayLogs, nextDoseAt, now = new Date()) {
     .filter((log) => log.status === "scheduled" && !log.taken_at && new Date(log.scheduled_for) <= now)
     .sort((a, b) => new Date(b.scheduled_for) - new Date(a.scheduled_for))[0];
   const latestResolvedLog = [...todayLogs]
-    .filter((log) => log.status === "taken" || log.status === "missed" || log.taken_at)
+    .filter((log) => isTakenDoseLog(log) || isMissedDoseLog(log))
     .sort((a, b) => {
       const aDate = new Date(a.taken_at || a.updated_at || a.scheduled_for);
       const bDate = new Date(b.taken_at || b.updated_at || b.scheduled_for);
@@ -273,7 +283,7 @@ function doseStatusLabel(todayLogs, nextDoseAt, now = new Date()) {
     return "Due now";
   }
 
-  if (latestResolvedLog?.status === "missed" && !latestResolvedLog.taken_at) {
+  if (isMissedDoseLog(latestResolvedLog)) {
     return "Missed dose";
   }
 
@@ -318,17 +328,17 @@ function buildDashboardData({ user, profile, healthGoals, medications, doseLogs,
     const scheduled = new Date(log.scheduled_for);
     return scheduled >= todayStart && scheduled <= todayEnd;
   });
-  const completedToday = todayLogs.filter((log) => log.status === "taken" || log.taken_at).length;
-  const missedTodayLogs = todayLogs.filter((log) => log.status === "missed" && !log.taken_at);
+  const completedToday = todayLogs.filter(isTakenDoseLog).length;
+  const missedTodayLogs = todayLogs.filter(isMissedDoseLog);
   const extraDoseAlert = extraDoseSummary(todayLogs, medicationsById);
   const completedDoseCountsToday = todayLogs
-    .filter((log) => log.status === "taken" || log.taken_at)
+    .filter(isTakenDoseLog)
     .reduce((counts, log) => {
       counts[log.medication_id] = (counts[log.medication_id] || 0) + 1;
       return counts;
     }, {});
   const upcomingLog = todayLogs
-    .filter((log) => !(log.status === "taken" || log.status === "missed" || log.taken_at))
+    .filter((log) => !(isTakenDoseLog(log) || isMissedDoseLog(log)))
     .sort((a, b) => new Date(a.scheduled_for) - new Date(b.scheduled_for))[0];
   const scheduledAt = (medication) =>
     scheduledAtForMedication(medication, {
