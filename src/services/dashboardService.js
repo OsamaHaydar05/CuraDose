@@ -367,10 +367,8 @@ function buildDashboardData({ user, profile, healthGoals, medications, doseLogs,
     ? Math.round(scheduledDays.reduce((sum, item) => sum + item.value, 0) / scheduledDays.length)
     : 0;
   const lockBoxSlots = buildDeviceSlots(deviceSlots, medications);
-  const liveSlotTotal = lockBoxSlots.reduce((sum, slot) => sum + (slot.pillCount || 0), 0);
-  const liveSlotDetail = lockBoxSlots
-    .map((slot) => `${slot.label}: ${slot.pillCount}`)
-    .join(" | ");
+  const compartmentOne = lockBoxSlots.find((slot) => slot.slotNumber === 1);
+  const compartmentTwo = lockBoxSlots.find((slot) => slot.slotNumber === 2);
   const acceptedInvite = caregiverInvites.find((invite) => invite.status === "accepted");
   const latestInvite = caregiverInvites[0];
   const caregiverStatus = acceptedInvite
@@ -427,8 +425,8 @@ function buildDashboardData({ user, profile, healthGoals, medications, doseLogs,
         id: "inventory",
         icon: "bottle",
         title: "Remaining Pills",
-        value: `${liveSlotTotal} Pills`,
-        detail: liveSlotDetail || "No slot data",
+        value: `Compartment 1: ${compartmentOne?.pillCount ?? 0}`,
+        detail: `Compartment 2: ${compartmentTwo?.pillCount ?? 0}`,
       },
       {
         id: "caregiver",

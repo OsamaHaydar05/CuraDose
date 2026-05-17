@@ -571,8 +571,16 @@ export default function DashboardView() {
                   <span>Remaining Pills</span>
                   <DashboardIcon name="bottle" />
                 </div>
-                <strong className="patient-card-value">{inventoryCard?.value || "0 Pills"}</strong>
-                <p>{inventoryCard?.detail || "No slot data"}</p>
+                <div className="patient-inventory-split">
+                  <div>
+                    <span>Compartment 1</span>
+                    <strong>{inventoryCard?.value?.replace("Compartment 1: ", "") || "0"}</strong>
+                  </div>
+                  <div>
+                    <span>Compartment 2</span>
+                    <strong>{inventoryCard?.detail?.replace("Compartment 2: ", "") || "0"}</strong>
+                  </div>
+                </div>
               </article>
 
               <article className="patient-card">

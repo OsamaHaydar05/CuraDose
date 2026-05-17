@@ -167,6 +167,7 @@ export default function LoginView({ theme = "system", setTheme }) {
         <div className="lp-shell">
           <header className="lp-navbar">
             <div className="lp-navbar-brand">
+              <img className="lp-brand-logo" src="/curadose-logo.png" alt="" aria-hidden="true" />
               <div className="brand-pill-icon lp-brand-icon" aria-hidden>
                 💊
               </div>
@@ -261,24 +262,64 @@ export default function LoginView({ theme = "system", setTheme }) {
                   Join as Caregiver
                 </button>
               </div>
-              <div className="lp-stat-row" id="features">
-                <article className="lp-stat-card">
-                  <p className="lp-stat-value">87%</p>
-                  <p className="lp-stat-label">Adherence Rate</p>
-                </article>
-                <article className="lp-stat-card">
-                  <p className="lp-stat-value">1.2K</p>
-                  <p className="lp-stat-label">Reminders Sent</p>
-                </article>
-                <article className="lp-stat-card">
-                  <p className="lp-stat-value">320+</p>
-                  <p className="lp-stat-label">Active Caregivers</p>
-                </article>
-              </div>
             </div>
 
             <div className="lp-hero-preview" id="caregiver">
               <div className="lp-preview-card">
+                <div className="lp-preview-dashboard-mock" aria-label="Example patient dashboard">
+                  <div className="lp-preview-dashboard-header">
+                    <div>
+                      <span>Welcome back</span>
+                      <strong>Hello, Emma</strong>
+                    </div>
+                    <em>Synced</em>
+                  </div>
+
+                  <article className="lp-preview-next-card">
+                    <div>
+                      <span>Next Pill</span>
+                      <small>13:00</small>
+                    </div>
+                    <strong>Today, 1:00 PM</strong>
+                    <p>Alvedon</p>
+                    <small>1 pill - Take with water</small>
+                    <em>Not due yet</em>
+                  </article>
+
+                  <div className="lp-preview-dashboard-cards">
+                    <article>
+                      <span>Weekly Adherence</span>
+                      <strong>92%</strong>
+                      <p>2 / 3 doses today</p>
+                    </article>
+                    <article>
+                      <span>Remaining Pills</span>
+                      <div className="lp-preview-compartment-pills">
+                        <div>
+                          <small>Compartment 1</small>
+                          <strong>8</strong>
+                        </div>
+                        <div>
+                          <small>Compartment 2</small>
+                          <strong>6</strong>
+                        </div>
+                      </div>
+                    </article>
+                  </div>
+
+                  <div className="lp-preview-slots">
+                    <article>
+                      <span>Box 1: Yellow</span>
+                      <strong>8 pills</strong>
+                      <small>Ready</small>
+                    </article>
+                    <article>
+                      <span>Box 2: Blue</span>
+                      <strong>6 pills</strong>
+                      <small>Ready</small>
+                    </article>
+                  </div>
+                </div>
                 <div className="lp-preview-header">
                   <div>
                     <p className="lp-preview-greeting">Good morning, Emma 👋</p>

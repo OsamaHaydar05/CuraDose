@@ -336,7 +336,7 @@ export default function CaregiverDashboardView() {
                       <span className="care-avatar">{patient.initials}</span>
                       <span>
                         <strong>{patient.name}</strong>
-                        <small>Next dose - {patient.nextDose} | {patient.remainingPills} pills left</small>
+                        <small>Next dose - {patient.nextDose} | C1: {patient.compartmentOnePills} | C2: {patient.compartmentTwoPills}</small>
                       </span>
                       <em className={`care-pill care-pill--${patient.tone}`}>{patient.status}</em>
                     </button>
@@ -507,7 +507,7 @@ export default function CaregiverDashboardView() {
                       <span className="care-avatar">{patient.initials}</span>
                       <span>
                         <strong>{patient.name}</strong>
-                        <small>Adherence - {patient.adherence}% | {patient.remainingPills} pills left</small>
+                        <small>C1: {patient.compartmentOnePills} pills | C2: {patient.compartmentTwoPills} pills</small>
                       </span>
                       <em className={`care-pill care-pill--${patient.tone}`}>{patient.status}</em>
                     </button>
@@ -552,14 +552,14 @@ export default function CaregiverDashboardView() {
                     <p>Scheduled today</p>
                   </article>
                   <article className="care-card">
-                    <span>Adherence</span>
-                    <strong>{selectedPatient.adherence}%</strong>
-                    <p>Last 30 days</p>
+                    <span>Compartment 1</span>
+                    <strong>{selectedPatient.compartmentOnePills}</strong>
+                    <p>Remaining pills</p>
                   </article>
                   <article className="care-card">
-                    <span>Remaining Pills</span>
-                    <strong>{selectedPatient.remainingPills}</strong>
-                    <p>{selectedPatient.remainingPillsDetail}</p>
+                    <span>Compartment 2</span>
+                    <strong>{selectedPatient.compartmentTwoPills}</strong>
+                    <p>Remaining pills</p>
                   </article>
                   <article className="care-card">
                     <span>Last Activity</span>

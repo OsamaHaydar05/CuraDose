@@ -48,6 +48,17 @@
   flex-shrink: 0;
 }
 
+.lp-brand-logo {
+  width: 75px;
+  height: 70px;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+.lp-navbar-brand .lp-brand-icon {
+  display: none;
+}
+
 .lp-brand-text-block {
   display: flex;
   flex-direction: column;
@@ -174,7 +185,7 @@
 
 @media (min-width: 900px) {
   .lp-hero {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 0.92fr) minmax(440px, 1.08fr);
     gap: var(--space-8);
     align-items: center;
   }
@@ -316,8 +327,183 @@
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-card);
   padding: var(--space-5);
-  max-width: 420px;
+  width: min(100%, 480px);
   margin: 0 auto;
+}
+
+.lp-preview-card > .lp-preview-header,
+.lp-preview-card > .lp-preview-dose,
+.lp-preview-card > .lp-preview-tiles {
+  display: none;
+}
+
+.lp-preview-dashboard-mock {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.lp-preview-dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.lp-preview-dashboard-header span,
+.lp-preview-next-card > div span,
+.lp-preview-dashboard-cards span,
+.lp-preview-slots span {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.lp-preview-dashboard-header strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--color-navy);
+  font-size: 1.35rem;
+}
+
+[data-theme="dark"] .lp-preview-dashboard-header strong {
+  color: var(--color-text-dark);
+}
+
+.lp-preview-dashboard-header em,
+.lp-preview-next-card em {
+  border-radius: var(--radius-pill);
+  background: #d8e9f5;
+  color: var(--color-green);
+  font-style: normal;
+  font-weight: 900;
+}
+
+.lp-preview-dashboard-header em {
+  padding: 0.45rem 0.75rem;
+  font-size: 0.76rem;
+}
+
+.lp-preview-next-card,
+.lp-preview-dashboard-cards article,
+.lp-preview-slots article {
+  border: 1px solid #d8e3ed;
+  border-radius: var(--radius-md);
+  background: #ffffff;
+}
+
+.lp-preview-next-card {
+  display: grid;
+  gap: 0.35rem;
+  padding: var(--space-4);
+}
+
+.lp-preview-next-card > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.lp-preview-next-card > div small {
+  color: var(--color-text-muted);
+  font-weight: 800;
+}
+
+.lp-preview-next-card strong {
+  color: var(--color-text-dark);
+  font-size: 1.45rem;
+  line-height: 1.15;
+}
+
+.lp-preview-next-card p,
+.lp-preview-next-card small,
+.lp-preview-dashboard-cards p,
+.lp-preview-slots small {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.lp-preview-next-card em {
+  display: grid;
+  place-items: center;
+  min-height: 38px;
+  margin-top: var(--space-2);
+}
+
+.lp-preview-dashboard-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.lp-preview-dashboard-cards article {
+  min-width: 0;
+  padding: var(--space-3);
+}
+
+.lp-preview-dashboard-cards strong {
+  display: block;
+  margin-top: 0.4rem;
+  color: var(--color-text-dark);
+  font-size: 1.35rem;
+}
+
+.lp-preview-dashboard-cards p {
+  margin-top: 0.3rem;
+  font-size: 0.78rem;
+}
+
+.lp-preview-compartment-pills {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin-top: 0.6rem;
+}
+
+.lp-preview-compartment-pills div {
+  min-width: 0;
+  padding: 0.55rem;
+  border-radius: var(--radius-sm);
+  background: #eef5fb;
+}
+
+.lp-preview-compartment-pills small {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: 0.52rem;
+  font-weight: 900;
+  line-height: 1.15;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.lp-preview-compartment-pills strong {
+  margin-top: 0.35rem;
+  font-size: 1.25rem;
+}
+
+.lp-preview-slots {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.lp-preview-slots article {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.2rem var(--space-3);
+  align-items: center;
+  padding: var(--space-3);
+  background: var(--color-bg);
+}
+
+.lp-preview-slots strong {
+  color: var(--color-text-dark);
+}
+
+.lp-preview-slots small {
+  grid-column: 1 / -1;
+  font-weight: 800;
 }
 
 .lp-preview-header {

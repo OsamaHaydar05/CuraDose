@@ -144,29 +144,22 @@ function nextDoseForPatient(logs, medications) {
 }
 
 function pillInventoryForPatient(slots, medications) {
-  const liveSlots = slots.filter((slot) => typeof slot.current_pill_count === "number");
+  const countForSlot = (slotNumber) => {
+    const slot = slots.find((item) => item.slot_number === slotNumber);
 
-  if (liveSlots.length) {
-    const total = liveSlots.reduce((sum, slot) => sum + slot.current_pill_count, 0);
-    const detail = liveSlots
-      .sort((a, b) => a.slot_number - b.slot_number)
-      .map((slot) => `${slot.label || `Box ${slot.slot_number}`}: ${slot.current_pill_count}`)
-      .join(" | ");
+    if (typeof slot?.current_pill_count === "number") {
+      return slot.current_pill_count;
+    }
 
-    return {
-      total,
-      detail: detail || "Live box data",
-    };
-  }
+    const medication = medications[slotNumber - 1];
+    const fallbackCount = Number(medication?.remaining_pills);
 
-  const medicationCounts = medications
-    .map((medication) => Number(medication.remaining_pills))
-    .filter((count) => Number.isFinite(count));
-  const total = medicationCounts.reduce((sum, count) => sum + count, 0);
+    return Number.isFinite(fallbackCount) ? fallbackCount : 0;
+  };
 
   return {
-    total,
-    detail: medicationCounts.length ? "Medication schedule estimate" : "No pill data yet",
+    compartmentOne: countForSlot(1),
+    compartmentTwo: countForSlot(2),
   };
 }
 
@@ -378,8 +371,8 @@ export async function getCaregiverDashboardData() {
       tone: status.tone,
       nextDose: formatDoseTime(nextDoseForPatient(patientLogs, patientMedications)),
       adherence: adherenceForLogs(patientLogs),
-      remainingPills: inventory.total,
-      remainingPillsDetail: inventory.detail,
+      compartmentOnePills: inventory.compartmentOne,
+      compartmentTwoPills: inventory.compartmentTwo,
       lastActivity: formatLastActivity(latestLog, patientSlots),
     };
   });
